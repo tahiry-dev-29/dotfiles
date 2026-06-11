@@ -9,6 +9,10 @@ A highly customized Neovim configuration based on **NvChad (v2.5)** with specifi
 - **LSP Configuration for Nx Monorepos**: TypeScript Language Server (`ts_ls`) is configured to perfectly understand Nx monorepos, correctly resolving paths from `nx.json` or `tsconfig.base.json` down to framework specific files (`angular.json`, `next.config.js`, etc.).
 - **Trunk Linter Integration**: Integrated floating terminal (`<C-t>`) to run `trunk check --show-existing` natively inside Neovim.
 - **Diagnostics UI**: Custom "Problems" workspace (`<C-j>`) via Trouble.nvim, and clear sidebar margin icons.
+- **Interconnected Ecosystem**: Directly launch terminal UI tools from within Neovim via floating terminals:
+  - `<C-g>`: Opens **Lazygit** to manage git seamlessly.
+  - `<C-d>`: Opens **Lazydocker** to monitor containers.
+  - `<C-t>`: Opens **Trunk Check** to view linter diagnostics globally.
 - **Safe Buffer Management**: Patched `<C-w>` mapping to safely close buffers without throwing `E5108`/`E517` errors on unlisted buffers or terminals.
 - **Easy Menus**: Dashboard accessible via `<leader>m` and a contextual right-click menu (`<RightMouse>`).
 
@@ -68,16 +72,29 @@ Before symlinking your configurations, install the actual tools on your fresh PC
 
 ## 🚀 Automated Configuration Installation (Zero-Touch)
 
-You can install these dotfiles on a fresh Linux/macOS machine with a single command. The included `install.sh` script does not rely on third-party tools like GNU Stow. It intelligently symlinks all configurations and safely backups any existing ones.
+You can install these dotfiles on a fresh machine with a single command. The included scripts (`install.sh` for Linux/macOS and `install.ps1` for Windows) intelligently symlink all configurations and safely backup any existing ones.
+
+### 🐧 Linux / macOS
 
 ```bash
-git clone https://github.com/$(gh api user -q ".login")/dotfiles.git ~/dotfiles
+git clone https://github.com/tahiry-dev-29/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 chmod +x install.sh
 ./install.sh
 ```
 
-### What `install.sh` does:
+### 🪟 Windows (PowerShell)
+
+Open PowerShell as Administrator (or ensure Developer Mode is enabled for Symlinks) and run:
+
+```powershell
+git clone https://github.com/tahiry-dev-29/dotfiles.git $env:USERPROFILE\dotfiles
+cd $env:USERPROFILE\dotfiles
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\install.ps1
+```
+
+### What the scripts do:
 1. Iterates over all configurations in the `configs/` directory.
-2. If an existing config (e.g., `~/.config/nvim`) is already present and is *not* a symlink, it safely moves it to `~/.dotfiles_backup_YYYYMMDD_HHMMSS`.
-3. Creates a symlink from the `~/dotfiles/configs/` directory to the respective path in your `$HOME` folder.
+2. If an existing config (e.g., `~/.config/nvim` or `%LOCALAPPDATA%\nvim`) is already present and is *not* a symlink, it safely moves it to a backup directory.
+3. Creates a symlink from the dotfiles repository directly to your system's configuration folder.
