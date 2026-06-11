@@ -101,6 +101,12 @@ if (Test-Path -Path $DockerSrc) {
     Prompt-Install -Name "Docker Aliases" -Src $DockerSrc -Dest $DockerDest
 }
 
+$FlutterSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\flutter_aliases.zsh"
+if (Test-Path -Path $FlutterSrc) {
+    $FlutterDest = Join-Path -Path $env:USERPROFILE -ChildPath ".flutter_aliases.zsh"
+    Prompt-Install -Name "Flutter Aliases" -Src $FlutterSrc -Dest $FlutterDest
+}
+
 Write-Host "==============================================="
 Write-Host "🎉 Installation complete!"
 Write-Host "If any existing directories were replaced, they were safely backed up with the .bak extension."

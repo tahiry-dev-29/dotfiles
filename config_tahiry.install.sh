@@ -174,6 +174,11 @@ if [ "${wants[zsh]}" = true ]; then
     if [[ "$ans_docker" =~ ^([yY][eE][sS]|[yY])$ ]]; then
         link_file "$DOTFILES_DIR/configs/optional/docker_aliases.zsh" "$HOME/.docker_aliases.zsh"
     fi
+
+    read -p "  [?] Do you want to enable the Flutter Aliases? [y/N] " ans_flutter
+    if [[ "$ans_flutter" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        link_file "$DOTFILES_DIR/configs/optional/flutter_aliases.zsh" "$HOME/.flutter_aliases.zsh"
+    fi
 fi
 
 echo "==============================================="
