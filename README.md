@@ -31,7 +31,42 @@ My highly productive Zsh configuration including:
 - Custom `.bashrc` fallback.
 - Global `.gitconfig`.
 
-## 🚀 Automated Installation (Zero-Touch)
+## 🧰 Prerequisites / Installation Links
+
+Before symlinking your configurations, install the actual tools on your fresh PC. Here are the official fast-install commands:
+
+<details>
+<summary><b>Show Installation Commands</b></summary>
+
+- **[Neovim (v0.10+)](https://neovim.io/)**:
+  ```bash
+  curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz && sudo rm -rf /opt/nvim && sudo tar -C /opt -xzf nvim-linux64.tar.gz && export PATH="$PATH:/opt/nvim-linux64/bin"
+  ```
+- **[Trunk Linter](https://trunk.io/)**:
+  ```bash
+  curl -fsSl https://trunk.io/releases/trunk | bash
+  ```
+- **[Zsh & Oh My Zsh](https://ohmyz.sh/)**:
+  ```bash
+  sudo apt install zsh -y && sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  ```
+- **[Lazygit](https://github.com/jesseduffield/lazygit)**:
+  ```bash
+  LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*') && curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" && tar xf lazygit.tar.gz lazygit && sudo install lazygit /usr/local/bin
+  ```
+- **[Lazydocker](https://github.com/jesseduffield/lazydocker)**:
+  ```bash
+  curl https://raw.githubusercontent.com/jesseduffield/lazydocker/master/scripts/install_update_linux.sh | bash
+  ```
+- **[Ghostty](https://github.com/ghostty-org/ghostty)** & **[Zed](https://zed.dev/)**:
+  ```bash
+  # Zed Editor
+  curl -f https://zed.dev/install.sh | sh
+  ```
+
+</details>
+
+## 🚀 Automated Configuration Installation (Zero-Touch)
 
 You can install these dotfiles on a fresh Linux/macOS machine with a single command. The included `install.sh` script does not rely on third-party tools like GNU Stow. It intelligently symlinks all configurations and safely backups any existing ones.
 
