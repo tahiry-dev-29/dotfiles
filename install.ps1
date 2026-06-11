@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 
 $DotfilesDir = $PSScriptRoot
 $ConfigDir = "$env:LOCALAPPDATA"
-$BackupDir = "$env:USERPROFILE\.dotfiles_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+$CurrentDate = Get-Date -Format "yyyyMMdd_HHmmss"
 
 Write-Host "==============================================="
 Write-Host "🚀 Starting Dotfiles Interactive Installation (Windows)"
@@ -21,7 +21,7 @@ function Prompt-Install {
     Write-Host "-----------------------------------------------"
     Write-Host "📦 Configuration: $Name"
     Write-Host "⚠️  WARNING: This will replace your current configuration at $Dest."
-    Write-Host "   (A backup will automatically be created at $BackupDir if it exists)"
+    Write-Host "   (An automatic backup will be created: ${Dest}.${CurrentDate}.bak)"
     
     $Response = Read-Host "Do you want to install the $Name configuration? [y/N]"
     if ($Response -match "^[yY]([eE][sS])?$") {
@@ -46,11 +46,9 @@ function Link-File {
     }
 
     if (Test-Path -Path $Dest) {
-        Write-Host "📦 Backing up $Dest to $BackupDir"
-        if (-not (Test-Path -Path $BackupDir)) {
-            New-Item -ItemType Directory -Path $BackupDir | Out-Null
-        }
-        Move-Item -Path $Dest -Destination $BackupDir -Force
+        $BackupName = "${Dest}.${CurrentDate}.bak"
+        Write-Host "📦 Backing up $Dest to $BackupName"
+        Move-Item -Path $Dest -Destination $BackupName -Force
     }
 
     Write-Host "🔗 Creating symlink: $Dest -> $Src"
@@ -90,5 +88,4 @@ if (Test-Path -Path $GitconfigSrc) {
 
 Write-Host "==============================================="
 Write-Host "🎉 Installation complete!"
-Write-Host "If any existing directories were replaced, you can find their backups in:"
-Write-Host "$BackupDir"
+Write-Host "If any existing directories were replaced, they were safely backed up with the .bak extension."

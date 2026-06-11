@@ -4,7 +4,7 @@ set -e
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="$HOME/.config"
-BACKUP_DIR="$HOME/.dotfiles_backup_$(date +%Y%m%d_%H%M%S)"
+CURRENT_DATE="$(date +%Y%m%d_%H%M%S)"
 
 echo "==============================================="
 echo "🚀 Starting Dotfiles Interactive Installation"
@@ -19,7 +19,7 @@ prompt_install() {
     echo "-----------------------------------------------"
     echo "📦 Configuration: $name"
     echo "⚠️  WARNING: This will replace your current configuration at $dest."
-    echo "   (A backup will automatically be created at $BACKUP_DIR if it exists)"
+    echo "   (An automatic backup will be created: ${dest}.${CURRENT_DATE}.bak)"
     
     read -p "Do you want to install the $name configuration? [y/N] " response
     if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -41,9 +41,9 @@ link_file() {
     fi
 
     if [ -e "$dest" ] || [ -d "$dest" ]; then
-        echo "📦 Backing up $dest to $BACKUP_DIR"
-        mkdir -p "$BACKUP_DIR"
-        mv "$dest" "$BACKUP_DIR/"
+        local backup_name="${dest}.${CURRENT_DATE}.bak"
+        echo "📦 Backing up $dest to $backup_name"
+        mv "$dest" "$backup_name"
     fi
 
     echo "🔗 Creating symlink: $dest -> $src"
@@ -86,5 +86,4 @@ fi
 
 echo "==============================================="
 echo "🎉 Installation complete!"
-echo "If any existing directories were replaced, you can find their backups in:"
-echo "$BACKUP_DIR"
+echo "If any existing directories were replaced, they were safely backed up with the .bak extension."
