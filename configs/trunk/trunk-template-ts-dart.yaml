@@ -1,0 +1,50 @@
+# Global Trunk template — TypeScript & Dart only
+# Copy this to your project's .trunk/trunk.yaml
+version: 0.1
+cli:
+  version: 1.25.0
+
+plugins:
+  sources:
+    - id: trunk
+      ref: v1.10.2
+      uri: https://github.com/trunk-io/plugins
+
+# Only Node runtime (for TypeScript/JS)
+runtimes:
+  enabled:
+    - node@22.16.0
+
+lint:
+  enabled:
+    - prettier@3.8.3       # TS/JS/JSON/CSS formatter
+    - eslint@8.57.1        # TypeScript linter
+    - git-diff-check       # Git whitespace checks
+    - markdownlint@0.48.0  # Markdown linter
+    - dart@3.8.1           # Dart/Flutter analyzer & formatter
+  disabled:
+    - actionlint
+    - bandit
+    - black
+    - checkov
+    - dotenv-linter
+    - grype
+    - go
+    - hadolint
+    - isort
+    - osv-scanner
+    - pinact
+    - python
+    - ruff
+    - shellcheck
+    - shfmt
+    - taplo
+    - trufflehog
+    - yamllint
+
+actions:
+  enabled:
+    - trunk-announce
+    - trunk-check-pre-push
+    - trunk-fmt-pre-commit
+    - trunk-upgrade-available

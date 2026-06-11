@@ -1,0 +1,6 @@
+# Ignore MacOS/Linux system files
+.DS_Store
+*~
+
+# Ignore backup folders created by install.sh
+.dotfiles_backup_*

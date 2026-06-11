@@ -1,0 +1,7 @@
+[user]
+	email = tahirydev29@gmail.com
+	name = Tanner tahiry
+[pull]
+	rebase = false
+[credential]
+	helper = store

@@ -1,0 +1,35 @@
+# --- Apparence & Thème ---
+# On retire le préfixe "dark:" qui cause l'erreur
+theme = catppuccin-mocha
+font-family = "JetBrains Mono"
+font-size = 11
+
+# --- Curseur ---
+# Le champ exact est 'cursor-style-blink'
+cursor-style = block
+cursor-style-blink = true
+
+# --- Fenêtre & Design ---
+window-decoration = true
+window-padding-x = 8
+window-padding-y = 8
+
+# Les noms ont été simplifiés (on retire "window-")
+background-opacity = 0.95
+background-blur-radius = 20
+
+# --- Interface Linux ---
+gtk-tabs-location = top
+
+# --- Raccourcis (Multiplexage) ---
+keybind = ctrl+shift+f=unbind
+keybind = ctrl+shift+e=new_split:right
+keybind = ctrl+shift+o=new_split:down
+keybind = ctrl+shift+h=goto_split:left
+keybind = ctrl+shift+j=goto_split:bottom
+keybind = ctrl+shift+k=goto_split:top
+keybind = ctrl+shift+l=goto_split:right
+
+keybind = ctrl+shift+p=unbind
+keybind = ctrl+shift+t=new_tab
+keybind = ctrl+shift+n=next_tab

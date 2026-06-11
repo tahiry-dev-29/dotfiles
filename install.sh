@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+set -e
+
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="$HOME/.config"
+BACKUP_DIR="$HOME/.dotfiles_backup_$(date +%Y%m%d_%H%M%S)"
+
+echo "🚀 Début de l'installation des dotfiles..."
+
+# Fonction pour créer un lien symbolique avec sauvegarde
+link_file() {
+    local src=$1
+    local dest=$2
+
+    if [ -L "$dest" ]; then
+        if [ "$(readlink "$dest")" = "$src" ]; then
+            echo "✅ Déjà lié : $dest"
+            return
+        fi
+    fi
+
+    if [ -e "$dest" ] || [ -d "$dest" ]; then
+        echo "📦 Sauvegarde de $dest dans $BACKUP_DIR"
+        mkdir -p "$BACKUP_DIR"
+        mv "$dest" "$BACKUP_DIR/"
+    fi
+
+    echo "🔗 Création du lien : $dest -> $src"
+    mkdir -p "$(dirname "$dest")"
+    ln -sf "$src" "$dest"
+}
+
+# 1. Dossiers dans ~/.config
+echo "📂 Configuration de ~/.config..."
+mkdir -p "$CONFIG_DIR"
+
+CONFIG_APPS=("nvim" "trunk" "fish" "lazygit" "lazydocker" "ghostty" "zed")
+
+for app in "${CONFIG_APPS[@]}"; do
+    if [ -d "$DOTFILES_DIR/configs/$app" ]; then
+        link_file "$DOTFILES_DIR/configs/$app" "$CONFIG_DIR/$app"
+    fi
+done
+
+# 2. Fichiers à la racine de ~/
+echo "📄 Configuration des fichiers système..."
+if [ -f "$DOTFILES_DIR/configs/bashrc" ]; then
+    link_file "$DOTFILES_DIR/configs/bashrc" "$HOME/.bashrc"
+fi
+
+if [ -f "$DOTFILES_DIR/configs/gitconfig" ]; then
+    link_file "$DOTFILES_DIR/configs/gitconfig" "$HOME/.gitconfig"
+fi
+
+echo "🎉 Installation terminée ! Si des dossiers existaient déjà, ils ont été sauvegardés dans $BACKUP_DIR."
