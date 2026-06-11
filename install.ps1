@@ -79,6 +79,15 @@ foreach ($App in $ConfigApps) {
     }
 }
 
+Write-Host "-----------------------------------------------"
+Write-Host "📄 System Files"
+
+$GitconfigSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\gitconfig"
+if (Test-Path -Path $GitconfigSrc) {
+    $GitconfigDest = Join-Path -Path $env:USERPROFILE -ChildPath ".gitconfig"
+    Prompt-Install -Name ".gitconfig" -Src $GitconfigSrc -Dest $GitconfigDest
+}
+
 Write-Host "==============================================="
 Write-Host "🎉 Installation complete!"
 Write-Host "If any existing directories were replaced, you can find their backups in:"
