@@ -22,6 +22,37 @@ else
     cd "$DOTFILES_DIR"
 fi
 
+# 2. Install Dependencies
+echo ""
+echo "📦 System Dependencies"
+read -p "  [?] Do you want to auto-install required system tools (tree, ripgrep, fd, zoxide, bun, pnpm)? [Y/n] " ans_deps
+if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
+    echo "  🔄 Detecting OS and installing packages..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update
+        sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip
+    elif command -v brew &> /dev/null; then
+        brew install tree ripgrep zoxide fd psmisc curl wget unzip
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip
+    else
+        echo "  ⚠️ Unsupported package manager. Please install tree, ripgrep, fd, and zoxide manually."
+    fi
+
+    # Install Bun
+    if ! command -v bun &> /dev/null; then
+        echo "  🍞 Installing Bun..."
+        curl -fsSL https://bun.sh/install | bash
+    fi
+
+    # Install pnpm
+    if ! command -v pnpm &> /dev/null; then
+        echo "  📦 Installing pnpm..."
+        curl -fsSL https://get.pnpm.io/install.sh | sh -
+    fi
+    echo "  ✅ Dependencies installed!"
+fi
+
 # Function to safely create symlinks
 link_file() {
     local src=$1
@@ -43,7 +74,7 @@ link_file() {
     ln -sf "$src" "$dest"
 }
 
-# 2. Interactive Menu
+# 3. Interactive Menu
 echo ""
 echo "Please select the configurations you want to install:"
 echo "-----------------------------------------------"
