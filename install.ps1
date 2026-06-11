@@ -86,6 +86,21 @@ if (Test-Path -Path $GitconfigSrc) {
     Prompt-Install -Name ".gitconfig" -Src $GitconfigSrc -Dest $GitconfigDest
 }
 
+Write-Host "-----------------------------------------------"
+Write-Host "🧩 Optional Developer Modules"
+
+$AngularSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\angular_aliases.zsh"
+if (Test-Path -Path $AngularSrc) {
+    $AngularDest = Join-Path -Path $env:USERPROFILE -ChildPath ".angular_aliases.zsh"
+    Prompt-Install -Name "Angular & Nx Aliases" -Src $AngularSrc -Dest $AngularDest
+}
+
+$DockerSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\docker_aliases.zsh"
+if (Test-Path -Path $DockerSrc) {
+    $DockerDest = Join-Path -Path $env:USERPROFILE -ChildPath ".docker_aliases.zsh"
+    Prompt-Install -Name "Docker Aliases" -Src $DockerSrc -Dest $DockerDest
+}
+
 Write-Host "==============================================="
 Write-Host "🎉 Installation complete!"
 Write-Host "If any existing directories were replaced, they were safely backed up with the .bak extension."

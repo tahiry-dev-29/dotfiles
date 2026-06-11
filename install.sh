@@ -84,6 +84,17 @@ if [ -f "$DOTFILES_DIR/configs/gitconfig" ]; then
     prompt_install ".gitconfig" "$DOTFILES_DIR/configs/gitconfig" "$HOME/.gitconfig"
 fi
 
+echo "-----------------------------------------------"
+echo "🧩 Optional Developer Modules"
+
+if [ -f "$DOTFILES_DIR/configs/optional/angular_aliases.zsh" ]; then
+    prompt_install "Angular & Nx Aliases" "$DOTFILES_DIR/configs/optional/angular_aliases.zsh" "$HOME/.angular_aliases.zsh"
+fi
+
+if [ -f "$DOTFILES_DIR/configs/optional/docker_aliases.zsh" ]; then
+    prompt_install "Docker Aliases" "$DOTFILES_DIR/configs/optional/docker_aliases.zsh" "$HOME/.docker_aliases.zsh"
+fi
+
 echo "==============================================="
 echo "🎉 Installation complete!"
 echo "If any existing directories were replaced, they were safely backed up with the .bak extension."

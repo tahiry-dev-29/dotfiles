@@ -461,6 +461,12 @@ alias reload-safe='exec zsh'
 
 
 # ==============================================================================
+# 🧩 OPTIONAL MODULES (Sourced if enabled during installation)
+# ==============================================================================
+[ -f ~/.angular_aliases.zsh ] && source ~/.angular_aliases.zsh
+[ -f ~/.docker_aliases.zsh ] && source ~/.docker_aliases.zsh
+
+# ==============================================================================
 # FIN - Chargé avec succès 🎉
 # ==============================================================================
 # echo "  🚀 Aliases Tahiry chargés — $(date +%H:%M)"
