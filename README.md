@@ -12,8 +12,11 @@ A highly customized Neovim configuration based on **NvChad (v2.5)** with specifi
 - **Safe Buffer Management**: Patched `<C-w>` mapping to safely close buffers without throwing `E5108`/`E517` errors on unlisted buffers or terminals.
 - **Easy Menus**: Dashboard accessible via `<leader>m` and a contextual right-click menu (`<RightMouse>`).
 
-### 2. 🐚 Fish Shell
-My default shell configuration (`~/.config/fish`), including aliases, paths, and environment variables (e.g., `uv` environment integration).
+### 2. 🐚 Zsh Shell
+My highly productive Zsh configuration including:
+- Custom `.zshrc`.
+- Massive custom aliases file (`.zsh_aliases`).
+- Stunning Powerlevel10k prompt configuration (`.p10k.zsh`).
 
 ### 3. 🛠️ Terminal Tools
 - **Lazygit**: Configuration for the terminal UI for git commands. Quickly accessible from Neovim via `<C-g>`.

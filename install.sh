@@ -49,6 +49,18 @@ if [ -f "$DOTFILES_DIR/configs/bashrc" ]; then
     link_file "$DOTFILES_DIR/configs/bashrc" "$HOME/.bashrc"
 fi
 
+if [ -f "$DOTFILES_DIR/configs/zshrc" ]; then
+    link_file "$DOTFILES_DIR/configs/zshrc" "$HOME/.zshrc"
+fi
+
+if [ -f "$DOTFILES_DIR/configs/zsh_aliases" ]; then
+    link_file "$DOTFILES_DIR/configs/zsh_aliases" "$HOME/.zsh_aliases"
+fi
+
+if [ -f "$DOTFILES_DIR/configs/p10k.zsh" ]; then
+    link_file "$DOTFILES_DIR/configs/p10k.zsh" "$HOME/.p10k.zsh"
+fi
+
 if [ -f "$DOTFILES_DIR/configs/gitconfig" ]; then
     link_file "$DOTFILES_DIR/configs/gitconfig" "$HOME/.gitconfig"
 fi
