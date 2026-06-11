@@ -25,16 +25,26 @@ fi
 # 2. Install Dependencies
 echo ""
 echo "📦 System Dependencies"
-read -p "  [?] Do you want to auto-install required system tools (tree, ripgrep, fd, zoxide, bun, pnpm)? [Y/n] " ans_deps
+read -p "  [?] Do you want to auto-install required system tools (tree, ripgrep, fd, zoxide, bun, pnpm, gh)? [Y/n] " ans_deps
 if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
     echo "  🔄 Detecting OS and installing packages..."
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
         sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip
+        
+        # GitHub CLI for APT
+        if ! command -v gh &> /dev/null; then
+            echo "  🐙 Installing GitHub CLI..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update
+            sudo apt-get install -y gh
+        fi
     elif command -v brew &> /dev/null; then
-        brew install tree ripgrep zoxide fd psmisc curl wget unzip
+        brew install tree ripgrep zoxide fd psmisc curl wget unzip gh
     elif command -v pacman &> /dev/null; then
-        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip
+        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip github-cli
     else
         echo "  ⚠️ Unsupported package manager. Please install tree, ripgrep, fd, and zoxide manually."
     fi
@@ -51,6 +61,28 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
         curl -fsSL https://get.pnpm.io/install.sh | sh -
     fi
     echo "  ✅ Dependencies installed!"
+fi
+
+# 3. Visuals & Fonts
+echo ""
+echo "🎨 Visuals & Fonts"
+read -p "  [?] Do you want to auto-install MesloLGS NF (Nerd Font for Icons)? [Y/n] " ans_font
+if [[ "$ans_font" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
+    echo "  📥 Downloading MesloLGS NF..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        FONT_DIR="$HOME/Library/Fonts"
+    else
+        FONT_DIR="$HOME/.local/share/fonts"
+    fi
+    mkdir -p "$FONT_DIR"
+    wget -qO "$FONT_DIR/MesloLGS NF Regular.ttf" "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf"
+    wget -qO "$FONT_DIR/MesloLGS NF Bold.ttf" "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf"
+    wget -qO "$FONT_DIR/MesloLGS NF Italic.ttf" "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf"
+    wget -qO "$FONT_DIR/MesloLGS NF Bold Italic.ttf" "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf"
+    if command -v fc-cache &> /dev/null; then
+        fc-cache -f "$FONT_DIR"
+    fi
+    echo "  ✅ Fonts installed successfully!"
 fi
 
 # Function to safely create symlinks
@@ -74,7 +106,7 @@ link_file() {
     ln -sf "$src" "$dest"
 }
 
-# 3. Interactive Menu
+# 4. Interactive Menu
 echo ""
 echo "Please select the configurations you want to install:"
 echo "-----------------------------------------------"
@@ -113,6 +145,20 @@ fi
 if [ "${wants[zsh]}" = true ]; then
     echo ""
     echo "🐚 Setting up Zsh core configurations..."
+    
+    # Clone ZSH Plugins
+    echo ""
+    echo "⚡ Setting up Zsh Plugins (Prezto, Autosuggestions, Syntax Highlighting)..."
+    read -p "  [?] Do you want to auto-clone required Zsh plugins? [Y/n] " ans_zsh_plugins
+    if [[ "$ans_zsh_plugins" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
+        [ ! -d "$HOME/.zprezto" ] && git clone --recursive https://github.com/sorin-ionescu/prezto.git "$HOME/.zprezto"
+        mkdir -p "$HOME/.zsh"
+        [ ! -d "$HOME/.zsh/zsh-autosuggestions" ] && git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.zsh/zsh-autosuggestions"
+        [ ! -d "$HOME/.zsh/zsh-syntax-highlighting" ] && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$HOME/.zsh/zsh-syntax-highlighting"
+        [ ! -d "$HOME/.zsh/powerlevel10k" ] && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/.zsh/powerlevel10k"
+        echo "  ✅ Zsh plugins cloned successfully!"
+    fi
+
     [ -f "$DOTFILES_DIR/configs/zshrc" ] && link_file "$DOTFILES_DIR/configs/zshrc" "$HOME/.zshrc"
     [ -f "$DOTFILES_DIR/configs/zsh_aliases" ] && link_file "$DOTFILES_DIR/configs/zsh_aliases" "$HOME/.zsh_aliases"
     [ -f "$DOTFILES_DIR/configs/p10k.zsh" ] && link_file "$DOTFILES_DIR/configs/p10k.zsh" "$HOME/.p10k.zsh"
