@@ -72,15 +72,14 @@ Before symlinking your configurations, install the actual tools on your fresh PC
 
 ## 🚀 Automated Configuration Installation (Zero-Touch)
 
-You can install these dotfiles on a fresh machine with a single command. The included scripts (`install.sh` for Linux/macOS and `install.ps1` for Windows) intelligently symlink all configurations and safely backup any existing ones.
+You can install these dotfiles on a fresh machine with a single command. The included scripts (`config_tahiry.install.sh` for Linux/macOS and `install.ps1` for Windows) intelligently symlink all configurations and safely backup any existing ones.
 
 ### 🐧 Linux / macOS
 
+Just run this single bootstrap command. It will auto-clone the repository and open the interactive installation menu:
+
 ```bash
-git clone https://github.com/tahiry-dev-29/dotfiles.git ~/dotfiles
-cd ~/dotfiles
-chmod +x install.sh
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/tahiry-dev-29/dotfiles/master/config_tahiry.install.sh | bash
 ```
 
 ### 🪟 Windows (PowerShell)
@@ -95,6 +94,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 ### What the scripts do:
-1. Iterates over all configurations in the `configs/` directory.
-2. If an existing config (e.g., `~/.config/nvim` or `%LOCALAPPDATA%\nvim`) is already present and is *not* a symlink, it safely moves it to a backup directory.
-3. Creates a symlink from the dotfiles repository directly to your system's configuration folder.
+1. Auto-clones the repository to `~/dotfiles` (if running the bootstrap script).
+2. Presents an interactive menu (`[Y/n]`) for every tool.
+3. If Zsh is selected, it prompts individually for optional modules (Angular / Docker).
+4. Safely moves any existing config (e.g., `~/.config/nvim`) to a `.bak` file right next to it with a timestamp.
+5. Creates a symlink from the dotfiles repository directly to your system's configuration folder.
