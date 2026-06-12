@@ -35,6 +35,7 @@ alias cdi='zi'                        # fzf interactive mode
 alias zshc="nvim ~/.zshrc"
 alias ld="lazydocker"
 alias lg="lazygit"
+alias tb="taskbook"
 alias zsha="nvim ~/.zsh_aliases"
 alias reload='source ~/.zshrc && echo "🚀 Configuration reloaded!"'
 alias path='echo $PATH | tr ":" "\n" | nl'   # display PATH readably
@@ -45,7 +46,7 @@ alias upgrade='sudo apt upgrade -y'
 alias upall='sudo apt update && sudo apt upgrade -y && flatpak update -y'
 alias clean-sys='sudo apt autoremove -y && sudo apt clean && sudo journalctl --vacuum-time=3d'
 alias mem='free -h'
-alias ports='netstat -tulnp'               # open ports
+alias ports='echo "📡 Open Ports:" && (echo "PROTO LOCAL_ADDR FOREIGN_ADDR STATE PID/PROGRAM"; netstat -tulnp 2>/dev/null | tail -n +3) | column -t'
 
 # Fixes
 alias brave-fix="rm -f ~/.config/BraveSoftware/Brave-Browser/SingletonLock ~/.config/BraveSoftware/Brave-Browser/SingletonCookie"
@@ -55,36 +56,73 @@ alias fix-gpg='gpg --refresh-keys'
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. SERVICES 🐳
 # ══════════════════════════════════════════════════════════════════════════════
-alias pg-start='sudo systemctl start postgresql'
-alias pg-stop='sudo systemctl stop postgresql'
-alias pg-status='sudo systemctl status postgresql'
-alias pg-restart='sudo systemctl restart postgresql'
-alias pg-log='sudo journalctl -u postgresql -f'
+alias pg-start='echo "🐘 Starting PostgreSQL..." && sudo systemctl start postgresql && echo "✅ PostgreSQL started"'
+alias pg-stop='echo "🐘 Stopping PostgreSQL..." && sudo systemctl stop postgresql && echo "✅ PostgreSQL stopped"'
+alias pg-status='echo "🐘 PostgreSQL status:" && sudo systemctl status postgresql'
+alias pg-restart='echo "🐘 Restarting PostgreSQL..." && sudo systemctl restart postgresql && echo "✅ PostgreSQL restarted"'
+alias pg-log='echo "🐘 Following PostgreSQL logs (Ctrl+C to exit)..." && sudo journalctl -u postgresql -f'
 
-alias mg-start='sudo systemctl start mongod'
-alias mg-stop='sudo systemctl stop mongod'
-alias mg-status='sudo systemctl status mongod'
+alias mg-start='echo "🍃 Starting MongoDB..." && sudo systemctl start mongod && echo "✅ MongoDB started"'
+alias mg-stop='echo "🍃 Stopping MongoDB..." && sudo systemctl stop mongod && echo "✅ MongoDB stopped"'
+alias mg-status='echo "🍃 MongoDB status:" && sudo systemctl status mongod'
 
-alias re-start='sudo systemctl start redis-server'
-alias re-stop='sudo systemctl stop redis-server'
-alias re-cli='redis-cli'
-alias re-flush='redis-cli FLUSHALL && echo "🔴 Redis cleared"'
+alias re-start='echo "🔴 Starting Redis..." && sudo systemctl start redis-server && echo "✅ Redis started"'
+alias re-stop='echo "🔴 Stopping Redis..." && sudo systemctl stop redis-server && echo "✅ Redis stopped"'
+alias re-cli='echo "🔴 Connecting to Redis CLI..." && redis-cli'
+alias re-flush='echo "⚠️  Flushing all Redis data..." && redis-cli FLUSHALL && echo "🔴 Redis cleared"'
 
-alias dk-start='sudo systemctl start docker'
-alias dk-stop='sudo systemctl stop docker'
-alias dk-status='sudo systemctl status docker'
+alias dk-start='echo "🐳 Starting Docker..." && sudo systemctl start docker && echo "✅ Docker started"'
+alias dk-stop='echo "🐳 Stopping Docker..." && sudo systemctl stop docker && echo "✅ Docker stopped"'
+alias dk-status='echo "🐳 Docker status:" && sudo systemctl status docker'
 
 # Combos
-alias dev-up='pg-start && dk-start && re-start && echo "✅ Dev stack started"'
-alias dev-down='pg-stop && mg-stop && dk-stop && re-stop && echo "🛑 Dev stack stopped"'
-alias dev-status='systemctl status postgresql mongod docker redis-server'
+alias dev-up='echo "▶ Starting dev stack..." && pg-start && dk-start && re-start && echo "✅ Dev stack started"'
+alias dev-down='echo "■ Stopping dev stack..." && pg-stop && mg-stop && dk-stop && re-stop && echo "🛑 Dev stack stopped"'
 alias dev-break='dev-down && clean-sys && sudo shutdown now'
 
+# Formatted dev-status table
+dev-status() {
+  echo ""
+  echo "╔════════════════════════════════════════╗"
+  echo "║         Dev Stack Status               ║"
+  echo "╠═════════════╦══════════╦══════════════╣"
+  printf "║ %-11s ║ %-8s ║ %-12s ║\n" "Service" "Status" "Port"
+  echo "╠═════════════╬══════════╬══════════════╣"
+  _svc_row() {
+    local name="$1" unit="$2" port="$3"
+    local status
+    if systemctl is-active --quiet "$unit" 2>/dev/null; then
+      status="✅ active"
+    else
+      status="❌ stopped"
+    fi
+    printf "║ %-11s ║ %-8s ║ %-12s ║\n" "$name" "$status" "$port"
+  }
+  _svc_row "PostgreSQL" "postgresql" "5432"
+  _svc_row "MongoDB" "mongod" "27017"
+  _svc_row "Docker" "docker" "daemon"
+  _svc_row "Redis" "redis-server" "6379"
+  echo "╠═════════════╩══════════╩══════════════╣"
+  echo "║    Active Ports (dev range)            ║"
+  echo "╠════════════════════════════════════════╣"
+  for port in 3000 4200 8080 5173 3001; do
+    local pid
+    pid=$(fuser "$port/tcp" 2>/dev/null | tr -d ' ')
+    if [[ -n "$pid" ]]; then
+      local prog
+      prog=$(ps -p "$pid" -o comm= 2>/dev/null || echo "?")
+      printf "║  %-4s  → PID %-6s  %-16s  ║\n" ":$port" "$pid" "($prog)"
+    fi
+  done
+  echo "╚════════════════════════════════════════╝"
+  echo ""
+}
+
 # Ports
-alias kill3000='fuser -k 3000/tcp && echo "✅ Port ✅ Port 3000 freed freed"'
-alias kill4200='fuser -k 4200/tcp && echo "✅ Port ✅ Port 4200 freed freed"'
-alias kill8080='fuser -k 8080/tcp && echo "✅ Port ✅ Port 8080 freed freed"'
-kill-port() { fuser -k ${1}/tcp && echo "✅ Port $1 freed"; }
+alias kill3000='fuser -k 3000/tcp && echo "✅ Port 3000 freed"'
+alias kill4200='fuser -k 4200/tcp && echo "✅ Port 4200 freed"'
+alias kill8080='fuser -k 8080/tcp && echo "✅ Port 8080 freed"'
+kill-port() { echo "🔌 Killing port $1..."; fuser -k ${1}/tcp && echo "✅ Port $1 freed"; }
 
 
 
@@ -95,9 +133,9 @@ kill-port() { fuser -k ${1}/tcp && echo "✅ Port $1 freed"; }
 # ══════════════════════════════════════════════════════════════════════════════
 # Bun
 alias br='bun run'
-alias bd='bun run dev'
-alias bb='bun run build'
-alias bt='bun run test'
+alias brd='bun run dev'
+alias brb='bun run build'
+alias brt='bun run test'
 alias bx='bunx'
 alias brm='bun remove'
 
@@ -236,8 +274,62 @@ extract() {
   esac
 }
 
+# Compress files/directories into an archive
+# Private helper (shared with extract)
+_compress_log() {
+  local log_type="$1"
+  local message="$2"
+  local timestamp
+  timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+  case "$log_type" in
+    "info")    echo -e "\e[34mℹ️ [$timestamp] [INFO] $message\e[0m" ;;
+    "success") echo -e "\e[32m✅ [$timestamp] [SUCCESS] $message\e[0m" ;;
+    "error")   echo -e "\e[31m❌ [$timestamp] [ERROR] $message\e[0m" ;;
+  esac
+}
+
+compress() {
+  if [[ $# -lt 2 ]]; then
+    _compress_log "error" "Usage: compress <output_archive> <file/dir> [file/dir ...]"
+    _compress_log "info" "Supported: .tar.gz .tar.bz2 .tar.xz .tar.zst .zip .7z"
+    return 1
+  fi
+
+  local output="$1"
+  shift
+  local output_lc
+  output_lc=$(echo "$output" | tr '[:upper:]' '[:lower:]')
+
+  _compress_log "info" "Compressing $* → $output"
+
+  case "$output_lc" in
+    *.tar.gz|*.tgz)
+      tar -czf "$output" "$@" && _compress_log "success" "Created tar.gz: $output" || _compress_log "error" "Failed to compress."
+      ;;
+    *.tar.bz2|*.tbz2)
+      tar -cjf "$output" "$@" && _compress_log "success" "Created tar.bz2: $output" || _compress_log "error" "Failed to compress."
+      ;;
+    *.tar.xz|*.txz)
+      tar -cJf "$output" "$@" && _compress_log "success" "Created tar.xz: $output" || _compress_log "error" "Failed to compress."
+      ;;
+    *.tar.zst)
+      tar --zstd -cf "$output" "$@" && _compress_log "success" "Created tar.zst: $output" || _compress_log "error" "Failed to compress."
+      ;;
+    *.zip)
+      zip -r "$output" "$@" && _compress_log "success" "Created zip: $output" || _compress_log "error" "Failed to compress."
+      ;;
+    *.7z)
+      7z a "$output" "$@" && _compress_log "success" "Created 7z: $output" || _compress_log "error" "Failed to compress."
+      ;;
+    *)
+      _compress_log "error" "Unsupported format. Use .tar.gz .tar.bz2 .tar.xz .tar.zst .zip or .7z"
+      return 1
+      ;;
+  esac
+}
+
 # Quick backup of a file
-bak() { cp "$1" "$1.bak.$(date +%Y%m%d_%H%M%S)"; echo "✅ Backup: $1.bak"; }
+bak() { echo "💾 Backing up $1..."; cp "$1" "$1.bak.$(date +%Y%m%d_%H%M%S)" && echo "✅ Backup: $1.bak"; }
 
 # Find processes eating RAM
 topmem() { ps aux --sort=-%mem | head -${1:-15}; }
@@ -252,17 +344,29 @@ alias reload-safe='exec zsh'
 
 # Dotfiles Environment Health Check
 dot-health() {
-  echo "🏥 Dotfiles Health Check"
-  echo "========================"
-  local tools=("bun" "pnpm" "node" "docker" "nx" "ng" "flutter" "rg" "fd" "gh" "git" "tree")
+  echo ""
+  echo "╔══════════════════════════════════════════╗"
+  echo "║       🏥 Dotfiles Health Check           ║"
+  echo "╠══════════════════════════════════════════╣"
+  local tools=("bun" "pnpm" "node" "nvm" "docker" "nx" "ng" "flutter" "rg" "fd" "gh" "git" "tree" "zoxide" "fzf")
   for tool in "${tools[@]}"; do
-    if command -v "$tool" >/dev/null 2>&1; then
-      echo -e "  ✅ $tool is installed"
+    # nvm is a shell function, not a binary
+    if [[ "$tool" == "nvm" ]]; then
+      if typeset -f nvm >/dev/null 2>&1 || [[ -s "$NVM_DIR/nvm.sh" ]]; then
+        printf "║  ✅ %-10s  is installed               ║\n" "$tool"
+      else
+        printf "║  ❌ \e[31m%-10s  is missing\e[0m               ║\n" "$tool"
+      fi
+    elif command -v "$tool" >/dev/null 2>&1; then
+      local version
+      version=$("$tool" --version 2>/dev/null | head -1 || echo "")
+      printf "║  ✅ %-10s  %-28s ║\n" "$tool" "$version"
     else
-      echo -e "  ❌ \e[31m$tool is missing\e[0m"
+      printf "║  ❌ \e[31m%-10s  is missing\e[0m\n" "$tool"
     fi
   done
-  echo "========================"
+  echo "╚══════════════════════════════════════════╝"
+  echo ""
 }
 
 
@@ -284,6 +388,103 @@ safe_source ~/.docker_aliases.zsh
 safe_source ~/.flutter_aliases.zsh
 safe_source ~/.nestjs_prisma_aliases.zsh
 safe_source ~/.git_aliases.zsh
+
+# ==============================================================================
+# CTRL+SHIFT+O — Dynamic directory jump with fzf (Task #10)
+# ==============================================================================
+_fzf_cd_widget() {
+  local selected
+  selected=$(find "${FZF_CD_BASE:-$HOME}" -maxdepth ${FZF_CD_DEPTH:-5} -type d \
+    -not -path '*/node_modules/*' \
+    -not -path '*/.git/*' \
+    -not -path '*/.dart_tool/*' \
+    -not -path '*/.angular/*' \
+    2>/dev/null | fzf --prompt='  Dir: ' --preview 'ls -la {}' --height=50% --reverse)
+  if [[ -n "$selected" ]]; then
+    BUFFER="cd \"$selected\""
+    zle accept-line
+  else
+    zle reset-prompt
+  fi
+}
+if command -v fzf >/dev/null 2>&1; then
+  zle -N _fzf_cd_widget
+  # Ctrl+Shift+O (terminal sends ^[[79;6u or \eO with many terms; bind both)
+  bindkey '^[o' _fzf_cd_widget          # Alt+O fallback
+  bindkey '^[[79;6u' _fzf_cd_widget     # Ctrl+Shift+O (kitty CSI u)
+  bindkey '^O' _fzf_cd_widget           # Ctrl+O common mapping
+fi
+
+# ==============================================================================
+# WORKTREE AUTO-SETUP — copy .env + pnpm install (Task #16)
+# ==============================================================================
+wt-new() {
+  if [[ $# -lt 2 ]]; then
+    echo "Usage: wt-new <worktree-path> <branch-name> [base-branch]"
+    echo "  e.g. wt-new ../myapp-feature-auth feature/auth main"
+    return 1
+  fi
+
+  local wt_path="$1"
+  local branch="$2"
+  local base="${3:-main}"
+  local src_root
+  src_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+  if [[ -z "$src_root" ]]; then
+    echo "❌ Not inside a git repository."
+    return 1
+  fi
+
+  echo ""
+  echo "╔══════════════════════════════════════════╗"
+  echo "║       🌿 Git Worktree Auto-Setup         ║"
+  echo "╠══════════════════════════════════════════╣"
+  printf "║  Path   : %-31s║\n" "$wt_path"
+  printf "║  Branch : %-31s║\n" "$branch"
+  printf "║  Base   : %-31s║\n" "$base"
+  echo "╚══════════════════════════════════════════╝"
+
+  read -q "REPLY?  [?] Confirm creation? [y/N] "
+  echo ""
+  if [[ "$REPLY" != "y" ]]; then
+    echo "⏭️  Aborted."
+    return 0
+  fi
+
+  echo "🌿 Creating worktree → $wt_path on branch: $branch"
+  git worktree add "$wt_path" -b "$branch" "$base" || {
+    echo "❌ Worktree creation failed."
+    return 1
+  }
+  echo "✅ Worktree created."
+
+  # Auto-copy .env files
+  local envs_copied=0
+  while IFS= read -r -d '' env_file; do
+    local rel
+    rel=$(realpath --relative-to="$src_root" "$env_file")
+    local dest="$wt_path/$rel"
+    mkdir -p "$(dirname "$dest")"
+    cp "$env_file" "$dest"
+    echo "📋 Copied: $rel"
+    envs_copied=$((envs_copied + 1))
+  done < <(find "$src_root" -maxdepth 4 -name '.env' -not -path '*/node_modules/*' -print0 2>/dev/null)
+  echo "✅ $envs_copied .env file(s) copied."
+
+  # Auto-install dependencies
+  if [[ -f "$wt_path/pnpm-lock.yaml" ]] || [[ -f "$wt_path/package.json" ]]; then
+    echo "📦 Running pnpm install in $wt_path..."
+    (
+      cd "$wt_path" && pnpm install
+    ) && echo "✅ pnpm install complete." || echo "⚠️  pnpm install had issues — check output."
+  fi
+
+  echo ""
+  echo "🚀 Worktree ready! cd into it with:"
+  echo "   cd $wt_path"
+  echo ""
+}
 
 # ==============================================================================
 # END - Loaded successfully 🎉

@@ -62,6 +62,14 @@ alias gwtb='git worktree add -b'
 alias gwtl='git worktree list'
 alias gwtr='git worktree remove'
 
+# Automated worktree workflow script (Task #11)
+alias gwt-auto='echo "🌿 Git Worktree Auto..." && bash ~/dotfiles/scripts/git-worktree-auto.sh'
+alias gwt-new='bash ~/dotfiles/scripts/git-worktree-auto.sh create'
+alias gwt-list='bash ~/dotfiles/scripts/git-worktree-auto.sh list'
+alias gwt-rm='bash ~/dotfiles/scripts/git-worktree-auto.sh remove'
+alias gwt-pr='bash ~/dotfiles/scripts/git-worktree-auto.sh pr-flow'
+alias gwt-clean='bash ~/dotfiles/scripts/git-worktree-auto.sh cleanup'
+
 # Find who wrote what
 gwho() { git log --follow -p -- $1; }
 galias() { git config --get-regexp alias; }
