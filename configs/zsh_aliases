@@ -41,10 +41,10 @@ alias reload='source ~/.zshrc && echo "🚀 Configuration reloaded!"'
 alias path='echo $PATH | tr ":" "\n" | nl'   # display PATH readably
 
 # System
-alias update='sudo apt update'
-alias upgrade='sudo apt upgrade -y'
-alias upall='sudo apt update && sudo apt upgrade -y && flatpak update -y'
-alias clean-sys='sudo apt autoremove -y && sudo apt clean && sudo journalctl --vacuum-time=3d'
+alias update='sys-update'
+alias upgrade='sys-upgrade'
+alias upall='sys-upgrade --all'
+alias clean-sys='sys-clean'
 alias mem='free -h'
 
 # Fixes
@@ -136,6 +136,9 @@ alias ping='ping -c 5'
 
 # Find quickly
 alias rgs='rg --type ts'             # ripgrep on TS files
+
+# GNOME Backup
+alias gnome-backup='~/dotfiles/scripts/gnome-dconf.sh'
 
 # ==============================================================================
 # ADVANCED FUNCTIONS

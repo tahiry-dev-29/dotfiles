@@ -30,7 +30,7 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
     echo "  🔄 Detecting OS and installing packages..."
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
-        sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip
+        sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip git-crypt
         
         # GitHub CLI for APT
         if ! command -v gh &> /dev/null; then
@@ -42,9 +42,9 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
             sudo apt-get install -y gh
         fi
     elif command -v brew &> /dev/null; then
-        brew install tree ripgrep zoxide fd psmisc curl wget unzip gh
+        brew install tree ripgrep zoxide fd psmisc curl wget unzip gh git-crypt
     elif command -v pacman &> /dev/null; then
-        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip github-cli
+        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip github-cli git-crypt
     else
         echo "  ⚠️ Unsupported package manager. Please install tree, ripgrep, fd, and zoxide manually."
     fi

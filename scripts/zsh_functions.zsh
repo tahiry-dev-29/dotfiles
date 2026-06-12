@@ -2,6 +2,57 @@
 # ZSH COMPLEX FUNCTIONS
 # ==============================================================================
 
+# OS Agnostic System Functions
+sys-update() {
+  echo "🔄 System Update..."
+  if command -v apt-get >/dev/null 2>&1 && ! grep -qi microsoft /proc/version 2>/dev/null; then
+    sudo apt update
+  elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -Sy
+  elif command -v brew >/dev/null 2>&1; then
+    brew update
+  elif grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "🪟 Windows WSL detected. Running apt update..."
+    sudo apt update
+  else
+    echo "❌ Package manager not supported."
+  fi
+}
+
+sys-upgrade() {
+  echo "🚀 System Upgrade..."
+  if command -v apt-get >/dev/null 2>&1 && ! grep -qi microsoft /proc/version 2>/dev/null; then
+    sudo apt upgrade -y
+    if [[ "$1" == "--all" ]]; then flatpak update -y 2>/dev/null || true; fi
+  elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -Su --noconfirm
+  elif command -v brew >/dev/null 2>&1; then
+    brew upgrade
+  elif grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "🪟 Windows WSL detected. Running apt upgrade..."
+    sudo apt upgrade -y
+  else
+    echo "❌ Package manager not supported."
+  fi
+}
+
+sys-clean() {
+  echo "🧹 System Clean..."
+  if command -v apt-get >/dev/null 2>&1 && ! grep -qi microsoft /proc/version 2>/dev/null; then
+    sudo apt autoremove -y && sudo apt clean && sudo journalctl --vacuum-time=3d 2>/dev/null || true
+  elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -Sc --noconfirm
+  elif command -v brew >/dev/null 2>&1; then
+    brew cleanup
+  elif grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "🪟 Windows WSL detected. Running apt autoremove and clean..."
+    sudo apt autoremove -y && sudo apt clean
+  else
+    echo "❌ Package manager not supported."
+  fi
+}
+
+
 unalias ports 2>/dev/null
 function ports() {
   echo "📡 Open Ports:"
