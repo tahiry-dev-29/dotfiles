@@ -3,14 +3,20 @@
 
 default: true
 
+# MD013 — no line length limit
+MD013: false
+
+# MD024 — allow multiple headings with the same content (e.g. repeated "Notes")
+MD024: false
+
+# MD031 — fenced code blocks don't require surrounding blank lines
+MD031: false
+
+# MD036 — allow emphasis used as pseudo-headings
+MD036: false
+
 # MD040 — fenced code blocks don't require a language specifier
 MD040: false
 
 # MD041 — first line doesn't have to be a top-level heading
 MD041: false
-
-# MD024 — allow multiple headings with the same content (e.g. repeated "Notes")
-MD024: false
-
-# MD036 — allow emphasis used as pseudo-headings
-MD036: false
