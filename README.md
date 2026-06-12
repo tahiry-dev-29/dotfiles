@@ -63,7 +63,7 @@ Before symlinking your configurations, install the actual tools on your fresh PC
 
 ## 🚀 Automated Configuration Installation (Zero-Touch)
 
-You can install these dotfiles on a fresh machine with a single command. The included scripts (`config_tahiry.install.sh` for Linux/macOS and `install.ps1` for Windows) intelligently symlink all configurations and safely backup any existing ones.
+You can install these dotfiles on a fresh machine with a single command. The included scripts intelligently symlink all configurations and safely backup any existing ones.
 
 ### 🐧 Linux / macOS
 
@@ -72,6 +72,7 @@ Just run this single bootstrap command. It will auto-clone the repository and op
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tahiry-dev-29/dotfiles/master/config_tahiry.install.sh | bash
 ```
+> 🔗 **[Download Linux/macOS Install Script](https://raw.githubusercontent.com/tahiry-dev-29/dotfiles/master/config_tahiry.install.sh)**
 
 ### 🪟 Windows (PowerShell)
 
@@ -83,6 +84,7 @@ cd $env:USERPROFILE\dotfiles
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\install.ps1
 ```
+> 🔗 **[Download Windows Install Script](https://raw.githubusercontent.com/tahiry-dev-29/dotfiles/master/install.ps1)**
 
 ### What the scripts do:
 1. Auto-clones the repository to `~/dotfiles` (if running the bootstrap script).
