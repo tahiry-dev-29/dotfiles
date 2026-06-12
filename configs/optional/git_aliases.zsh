@@ -27,6 +27,7 @@ alias gb='git branch'
 alias gba='git branch -a'
 alias gbd='git branch -d'
 alias gbD='git branch -D'
+alias gbm='git branch -m'            # rename branch
 alias gsw='git switch'
 alias gswc='git switch -c'           # create + switch
 alias gco='git checkout'
@@ -54,6 +55,12 @@ alias grss1='git reset --soft HEAD~1' # undo last commit (keep changes)
 
 alias gtag='git tag'
 alias gtagp='git push origin --tags'
+
+alias gwt='git worktree'
+alias gwta='git worktree add'
+alias gwtb='git worktree add -b'
+alias gwtl='git worktree list'
+alias gwtr='git worktree remove'
 
 # Find who wrote what
 gwho() { git log --follow -p -- $1; }
