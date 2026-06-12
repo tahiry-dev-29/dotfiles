@@ -81,6 +81,7 @@ alias dev-down='echo "■ Stopping dev stack..." && pg-stop && mg-stop && dk-sto
 alias dev-break='dev-down && clean-sys && sudo shutdown now'
 
 # Formatted dev-status table
+unalias dev-status 2>/dev/null
 dev-status() {
   echo ""
   echo "╔════════════════════════════════════════╗"
