@@ -1,0 +1,16 @@
+# Markdownlint config — suppress low-severity stylistic rules
+# Copy this to your project root as .markdownlint.yaml
+
+default: true
+
+# MD040 — fenced code blocks don't require a language specifier
+MD040: false
+
+# MD041 — first line doesn't have to be a top-level heading
+MD041: false
+
+# MD024 — allow multiple headings with the same content (e.g. repeated "Notes")
+MD024: false
+
+# MD036 — allow emphasis used as pseudo-headings
+MD036: false
