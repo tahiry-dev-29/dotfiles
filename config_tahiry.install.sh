@@ -60,6 +60,23 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
         echo "  📦 Installing pnpm..."
         curl -fsSL https://get.pnpm.io/install.sh | sh -
     fi
+
+    # Install NVM dynamically (latest release) and Node.js LTS
+    if [ ! -d "$HOME/.nvm" ]; then
+        echo "  🟢 Installing NVM (Node Version Manager) & Node.js LTS..."
+        NVM_LATEST=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [ -z "$NVM_LATEST" ]; then NVM_LATEST="v0.40.1"; fi # fallback
+        curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_LATEST}/install.sh" | bash
+        
+        # Load NVM and install Node.js LTS
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install --lts
+        nvm use --lts
+        nvm alias default 'lts/*'
+    else
+        echo "  ✅ NVM is already installed."
+    fi
     echo "  ✅ Dependencies installed!"
 fi
 
