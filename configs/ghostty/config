@@ -1,5 +1,5 @@
-# --- Apparence & Thème ---
-# On retire le préfixe "dark:" qui cause l'erreur
+# --- Appearance & Theme ---
+# Remove the "dark:" prefix which causes errors
 theme = catppuccin-mocha
 font-family = "JetBrains Mono"
 font-size = 11
@@ -14,7 +14,7 @@ window-decoration = true
 window-padding-x = 8
 window-padding-y = 8
 
-# Les noms ont été simplifiés (on retire "window-")
+# Names simplified (removed "window-")
 background-opacity = 0.95
 background-blur-radius = 20
 

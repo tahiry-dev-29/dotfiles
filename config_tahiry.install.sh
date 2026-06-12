@@ -112,7 +112,7 @@ echo "Please select the configurations you want to install:"
 echo "-----------------------------------------------"
 
 declare -A wants
-apps=("nvim" "trunk" "lazygit" "lazydocker" "zsh" "fish" "ghostty" "zed" "gitconfig")
+apps=("nvim" "trunk" "lazygit" "lazydocker" "zsh" "fish" "ghostty")
 
 for app in "${apps[@]}"; do
     read -p "  [?] Install $app ? [Y/n] " response
@@ -130,16 +130,12 @@ echo "🚀 Applying configurations..."
 mkdir -p "$CONFIG_DIR"
 
 # Standard Apps
-for app in "nvim" "trunk" "lazygit" "lazydocker" "fish" "ghostty" "zed"; do
+for app in "nvim" "trunk" "lazygit" "lazydocker" "fish" "ghostty"; do
     if [ "${wants[$app]}" = true ] && [ -d "$DOTFILES_DIR/configs/$app" ]; then
         link_file "$DOTFILES_DIR/configs/$app" "$CONFIG_DIR/$app"
     fi
 done
 
-# Gitconfig
-if [ "${wants[gitconfig]}" = true ] && [ -f "$DOTFILES_DIR/configs/gitconfig" ]; then
-    link_file "$DOTFILES_DIR/configs/gitconfig" "$HOME/.gitconfig"
-fi
 
 # ZSH Specific Logic
 if [ "${wants[zsh]}" = true ]; then
@@ -151,12 +147,32 @@ if [ "${wants[zsh]}" = true ]; then
     echo "⚡ Setting up Zsh Plugins (Prezto, Autosuggestions, Syntax Highlighting)..."
     read -p "  [?] Do you want to auto-clone required Zsh plugins? [Y/n] " ans_zsh_plugins
     if [[ "$ans_zsh_plugins" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
-        [ ! -d "$HOME/.zprezto" ] && git clone --recursive https://github.com/sorin-ionescu/prezto.git "$HOME/.zprezto"
+        update_or_clone() {
+            local dir=$1
+            local repo=$2
+            if [ -d "$dir" ]; then
+                echo "  🔄 Updating $(basename "$dir")..."
+                git -C "$dir" pull origin master >/dev/null 2>&1 || git -C "$dir" pull origin main >/dev/null 2>&1 || true
+            else
+                echo "  📥 Cloning $(basename "$dir")..."
+                git clone --recursive "$repo" "$dir" >/dev/null 2>&1
+            fi
+        }
+
+        update_or_clone "$HOME/.zprezto" "https://github.com/sorin-ionescu/prezto.git"
         mkdir -p "$HOME/.zsh"
-        [ ! -d "$HOME/.zsh/zsh-autosuggestions" ] && git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.zsh/zsh-autosuggestions"
-        [ ! -d "$HOME/.zsh/zsh-syntax-highlighting" ] && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$HOME/.zsh/zsh-syntax-highlighting"
-        [ ! -d "$HOME/.zsh/powerlevel10k" ] && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/.zsh/powerlevel10k"
-        echo "  ✅ Zsh plugins cloned successfully!"
+        update_or_clone "$HOME/.zsh/zsh-autosuggestions" "https://github.com/zsh-users/zsh-autosuggestions"
+        update_or_clone "$HOME/.zsh/zsh-syntax-highlighting" "https://github.com/zsh-users/zsh-syntax-highlighting.git"
+        
+        if [ -d "$HOME/.zsh/powerlevel10k" ]; then
+            echo "  🔄 Updating powerlevel10k..."
+            git -C "$HOME/.zsh/powerlevel10k" pull origin master >/dev/null 2>&1 || true
+        else
+            echo "  📥 Cloning powerlevel10k..."
+            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/.zsh/powerlevel10k" >/dev/null 2>&1
+        fi
+        
+        echo "  ✅ Zsh plugins installed/updated successfully!"
     fi
 
     [ -f "$DOTFILES_DIR/configs/zshrc" ] && link_file "$DOTFILES_DIR/configs/zshrc" "$HOME/.zshrc"
@@ -178,6 +194,16 @@ if [ "${wants[zsh]}" = true ]; then
     read -p "  [?] Do you want to enable the Flutter Aliases? [y/N] " ans_flutter
     if [[ "$ans_flutter" =~ ^([yY][eE][sS]|[yY])$ ]]; then
         link_file "$DOTFILES_DIR/configs/optional/flutter_aliases.zsh" "$HOME/.flutter_aliases.zsh"
+    fi
+
+    read -p "  [?] Do you want to enable the NestJS & Prisma Aliases? [y/N] " ans_nestjs
+    if [[ "$ans_nestjs" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        link_file "$DOTFILES_DIR/configs/optional/nestjs_prisma_aliases.zsh" "$HOME/.nestjs_prisma_aliases.zsh"
+    fi
+
+    read -p "  [?] Do you want to enable the Git & GitHub CLI Aliases? [y/N] " ans_git
+    if [[ "$ans_git" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        link_file "$DOTFILES_DIR/configs/optional/git_aliases.zsh" "$HOME/.git_aliases.zsh"
     fi
 fi
 

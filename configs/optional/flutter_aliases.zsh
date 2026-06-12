@@ -1,6 +1,7 @@
 # ==============================================================================
 # 10. FLUTTER 💙
 # ==============================================================================
+if command -v flutter >/dev/null 2>&1; then
 alias f='flutter'
 alias fr='flutter run'
 alias frd='flutter run --debug'
@@ -37,8 +38,9 @@ alias fb-ios='flutter build ios --release'
 alias fb-web='flutter build web --release'
 alias fb-linux='flutter build linux --release'
 
-# Fix commun
+# Common fix
 alias ffix='flutter clean && flutter pub get && flutter pub run build_runner build --delete-conflicting-outputs'
 
-# Créer un projet Flutter propre
-fnew() { flutter create --org com.${2:-tahiry} --template=app $1 && cd $1 && flutter pub get; }
+# Create a clean Flutter project
+fnew() { flutter create --org com.${2:-$USER} --template=app $1 && cd $1 && flutter pub get; }
+fi

@@ -7,7 +7,7 @@ M.base46 = {
   transparency = false,
 }
 
-M.ui = { theme = "onedark" } -- Thème NvChad par défaut
+M.ui = { theme = "onedark" } -- Default NvChad Theme
 
 M.mappings = require "mappings"
 

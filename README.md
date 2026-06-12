@@ -28,12 +28,7 @@ My highly productive Zsh configuration including:
 - **Trunk**: Centralized linter configuration (`~/.config/trunk`).
 
 ### 4. 🚀 Terminals & Editors
-- **Ghostty**: Blazing fast terminal emulator config and themes (`catppuccin-mocha`).
-- **Zed**: Configuration settings for the Zed editor.
 
-### 5. ⚙️ System Files
-- Custom `.bashrc` fallback.
-- Global `.gitconfig`.
 
 ## 🧰 Prerequisites / Installation Links
 
@@ -62,11 +57,7 @@ Before symlinking your configurations, install the actual tools on your fresh PC
   ```bash
   curl https://raw.githubusercontent.com/jesseduffield/lazydocker/master/scripts/install_update_linux.sh | bash
   ```
-- **[Ghostty](https://github.com/ghostty-org/ghostty)** & **[Zed](https://zed.dev/)**:
-  ```bash
-  # Zed Editor
-  curl -f https://zed.dev/install.sh | sh
-  ```
+- **[Ghostty](https://github.com/ghostty-org/ghostty)**:
 
 </details>
 

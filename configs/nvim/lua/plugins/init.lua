@@ -1,6 +1,6 @@
 return {
   { "rcarriga/nvim-notify", config = function() vim.notify = require("notify") end },
-  -- Noice pour UI et Commandes centralisées
+  -- Noice for UI and centralized Commands
   {
     "folke/noice.nvim",
     event = "VeryLazy",

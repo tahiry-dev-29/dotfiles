@@ -3,9 +3,9 @@
 #  Stack: Angular · NestJS · Flutter · Prisma · NX · Docker · Bun · pnpm
 # ==============================================================================
 
-# ── 0. PROFILING (décommenter pour déboguer le temps de démarrage) ────────────
-# zmodload zsh/zprof   # en haut du .zshrc
-# zprof               # en bas du .zshrc
+# ── 0. PROFILING (uncomment to debug startup time) ────────────
+# zmodload zsh/zprof   # at the top of .zshrc
+# zprof               # at the bottom of .zshrc
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -20,32 +20,32 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 alias ~='cd ~'
-alias -- -='cd -'                     # retour au dossier précédent
+alias -- -='cd -'                     # return to previous directory
 
 alias nv='nvim .'
 alias v='nvim'
 alias grep='rg'                       # ripgrep > grep
 alias df='df -h'
 alias s='sudo '
-# Navigation rapide (zoxide)
+# Fast navigation (zoxide)
 alias cd='z'
-alias cdi='zi'                        # mode interactif fzf
+alias cdi='zi'                        # fzf interactive mode
 
-# Édition config
+# Edit config
 alias zshc="nvim ~/.zshrc"
 alias ld="lazydocker"
 alias lg="lazygit"
 alias zsha="nvim ~/.zsh_aliases"
-alias reload='source ~/.zshrc && echo "🚀 Configuration rechargée !"'
-alias path='echo $PATH | tr ":" "\n" | nl'   # affiche le PATH lisiblement
+alias reload='source ~/.zshrc && echo "🚀 Configuration reloaded!"'
+alias path='echo $PATH | tr ":" "\n" | nl'   # display PATH readably
 
-# Système
+# System
 alias update='sudo apt update'
 alias upgrade='sudo apt upgrade -y'
 alias upall='sudo apt update && sudo apt upgrade -y && flatpak update -y'
 alias clean-sys='sudo apt autoremove -y && sudo apt clean && sudo journalctl --vacuum-time=3d'
 alias mem='free -h'
-alias ports='netstat -tulnp'               # ports ouverts
+alias ports='netstat -tulnp'               # open ports
 
 # Fixes
 alias brave-fix="rm -f ~/.config/BraveSoftware/Brave-Browser/SingletonLock ~/.config/BraveSoftware/Brave-Browser/SingletonCookie"
@@ -68,51 +68,30 @@ alias mg-status='sudo systemctl status mongod'
 alias re-start='sudo systemctl start redis-server'
 alias re-stop='sudo systemctl stop redis-server'
 alias re-cli='redis-cli'
-alias re-flush='redis-cli FLUSHALL && echo "🔴 Redis vidé"'
+alias re-flush='redis-cli FLUSHALL && echo "🔴 Redis cleared"'
 
 alias dk-start='sudo systemctl start docker'
 alias dk-stop='sudo systemctl stop docker'
 alias dk-status='sudo systemctl status docker'
 
 # Combos
-alias dev-up='pg-start && dk-start && re-start && echo "✅ Stack dev démarrée"'
-alias dev-down='pg-stop && mg-stop && dk-stop && re-stop && echo "🛑 Stack dev arrêtée"'
+alias dev-up='pg-start && dk-start && re-start && echo "✅ Dev stack started"'
+alias dev-down='pg-stop && mg-stop && dk-stop && re-stop && echo "🛑 Dev stack stopped"'
 alias dev-status='systemctl status postgresql mongod docker redis-server'
 alias dev-break='dev-down && clean-sys && sudo shutdown now'
 
 # Ports
-alias kill3000='fuser -k 3000/tcp && echo "✅ Port 3000 libéré"'
-alias kill4200='fuser -k 4200/tcp && echo "✅ Port 4200 libéré"'
-alias kill8080='fuser -k 8080/tcp && echo "✅ Port 8080 libéré"'
-kill-port() { fuser -k ${1}/tcp && echo "✅ Port $1 libéré"; }
+alias kill3000='fuser -k 3000/tcp && echo "✅ Port ✅ Port 3000 freed freed"'
+alias kill4200='fuser -k 4200/tcp && echo "✅ Port ✅ Port 4200 freed freed"'
+alias kill8080='fuser -k 8080/tcp && echo "✅ Port ✅ Port 8080 freed freed"'
+kill-port() { fuser -k ${1}/tcp && echo "✅ Port $1 freed"; }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 3. DOCKER 🐋
-# ══════════════════════════════════════════════════════════════════════════════
-alias d='docker'
-alias dc='docker compose'
-alias dcu='docker compose up -d'
-alias dcd='docker compose down'
-alias dcr='docker compose restart'
-alias dcl='docker compose logs -f'
-alias dcp='docker compose pull'
-alias dcb='docker compose up -d --build'
 
-alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
-alias dpsa='docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
-alias di='docker images'
-alias dprune='docker system prune -af --volumes && echo "🧹 Docker nettoyé"'
-alias dstats='docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"'
-
-# Entrer dans un container
-dsh() { docker exec -it $1 /bin/sh; }
-dbash() { docker exec -it $1 /bin/bash; }
-dlogs() { docker logs -f --tail=100 $1; }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 4. RUNTIME & PACKAGE MANAGERS ⚡
+# 3. RUNTIME & PACKAGE MANAGERS ⚡
 # ══════════════════════════════════════════════════════════════════════════════
 # Bun
 alias br='bun run'
@@ -132,226 +111,34 @@ alias pe='pnpm exec'
 alias px='pnpm dlx'
 alias pclean='rm -rf node_modules pnpm-lock.yaml && pnpm install'
 alias pup='pnpm update --interactive --latest'
-alias pwhy='pnpm why'                 # pourquoi ce package est installé ?
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 5. GIT 🐙
-# ══════════════════════════════════════════════════════════════════════════════
-
-alias gs='git status'
-alias ga='git add .'
-alias gaa='git add -A'
-alias gai='git add -i'                # add interactif
-alias gc='git commit'
-alias gcm='git commit -m'
-alias gcam='git add . && git commit -m'
-alias gca='git commit --amend --no-edit'
-alias gcae='git commit --amend'
-alias gp='git push'
-alias gpf='git push --force-with-lease' # push force SAFE
-alias gpo='git push -u origin HEAD'  # push nouvelle branche
-alias gl='git pull'
-alias glr='git pull --rebase'
-alias gf='git fetch --all --prune'
-
-alias glog="git log --oneline --graph --decorate --color"
-alias gloga="git log --oneline --graph --decorate --all --color"
-alias glogp='git log --pretty=format:"%C(yellow)%h%Creset %C(blue)%an%Creset %C(green)%ar%Creset %s"'
-
-alias gb='git branch'
-alias gba='git branch -a'
-alias gbd='git branch -d'
-alias gbD='git branch -D'
-alias gsw='git switch'
-alias gswc='git switch -c'           # créer + switcher
-alias gco='git checkout'
-alias gcob='git checkout -b'
-
-alias gst='git stash'
-alias gstp='git stash pop'
-alias gstl='git stash list'
-alias gstd='git stash drop'
-alias gsta='git stash apply'
-
-alias grb='git rebase'
-alias grbi='git rebase -i'           # rebase interactif
-alias grbc='git rebase --continue'
-alias grba='git rebase --abort'
-
-alias gd='git diff'
-alias gds='git diff --staged'
-alias gdw='git diff --word-diff'
-
-alias grs='git restore'
-alias grss='git restore --staged'    # unstage un fichier
-alias grsh='git reset --hard HEAD'   # DANGER: discard tout
-alias grss1='git reset --soft HEAD~1' # annuler dernier commit (garder changes)
-
-alias gtag='git tag'
-alias gtagp='git push origin --tags'
-
-# Trouver qui a écrit quoi
-gwho() { git log --follow -p -- $1; }
-galias() { git config --get-regexp alias; }
-
-# Sync fork avec upstream
-upstream-sync() {
-  local main_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-  main_branch=${main_branch:-main}
-  echo "🔄 Sync avec upstream/$main_branch..."
-  git checkout $main_branch && git fetch upstream && git merge upstream/$main_branch --ff-only && git push origin $main_branch
-  echo "✅ Fork synchronisé !"
-}
-
-# Créer une PR vite fait
-gpr() {
-  git add . && git commit -m "${1:-wip}" && git push -u origin HEAD
-  echo "🔗 Ouvre GitHub pour créer ta PR !"
-  gh pr create --fill 2>/dev/null || echo "💡 Installe gh CLI pour auto-créer la PR"
-}
-
-# Nettoyer les branches mergées
-gbclean() {
-  git fetch --all --prune
-  git branch --merged | grep -v '\*\|main\|master\|develop' | xargs -r git branch -d
-  echo "🧹 Branches mergées supprimées"
-}
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 6. NX MONOREPO 🐬
-# ══════════════════════════════════════════════════════════════════════════════
-
-# Run
-alias nxsa='br start:all'
-alias nxpgl='br prisma:generate:local'
-alias nxpmd='br prisma:migrate:deploy'
-alias nxpstu='br prisma:studio'
-alias nxba='br build:all'
-
-# Générateurs
-alias nxgc='bunx nx g @nx/angular:component'
-alias nxgs='bunx nx g @nx/angular:service'
-alias nxgp='bunx nx g @nx/angular:pipe'
-alias nxgd='bunx nx g @nx/angular:directive'
-alias nxgm='bunx nx g @nx/angular:module'
-alias nxgr='bunx nx g @nx/angular:resolver'
-
-# Fonctions NX
-nx-new-api() { bunx nx g @nx/nest:application --name=${1:-api} --directory=apps/${1:-api} --unitTestRunner=none --linter=eslint; }
-nx-new-lib() { bunx nx g @nx/nest:lib libs/$1; }
-nx-gen-feat() {
-  bunx nx g @nx/js:library $1 \
-    --directory=libs/backend/features/$1 \
-    --bundler=none --minimal --unitTestRunner=none \
-    --importPath=@dimanew/backend/$1 --linter=none
-}
-nx-affected() { bunx nx affected --target=${1:-build} --base=origin/main; }
-nx-dep() { bunx nx show project $1 --web; }  # voir les dépendances d'un projet
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 7. ANGULAR 🦁  (Angular CLI — ng)
-# ══════════════════════════════════════════════════════════════════════════════
-# Dev
-alias ngs-prod='ng serve --configuration=production'
-alias ngb='ng build'
-alias ngb-prod='ng build --configuration=production'
-alias ngt='ng test'
-alias ngtw='ng test --watch'
-alias ngl='ng lint'
-alias nge2e='ng e2e'
-
-# Générateurs (ng generate)
-alias nggc='ng g component'
-alias nggs='ng g service'
-alias nggp='ng g pipe'
-alias nggd='ng g directive'
-alias nggm='ng g module'
-alias nggr='ng g resolver'
-alias nggg='ng g guard'
-alias nggi='ng g interceptor'
-alias nggen='ng g enum'
-alias nggcl='ng g class'
-alias nggif='ng g interface'
-
-# Générateurs avec options Angular moderne (standalone + scss + OnPush)
-nggnew() {
-  local name=$1
-  local path=${2:-.}
-  ng g component $path/$name --standalone --style=scss --change-detection=OnPush
-  echo "✅ Component '$name' généré dans $path"
-}
-
-# Mise à jour Angular
-alias ng-update='ng update @angular/core @angular/cli'
-alias ng-update-all='ng update'
-alias ng-version='ng version'
-alias ng-doc='ng doc'                 # ouvre la doc Angular
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 8. NESTJS 🐦
-# ══════════════════════════════════════════════════════════════════════════════
-alias ns='pnpm start'
-alias nsd='pnpm start:dev'
-alias nsb='pnpm start:debug'
-alias nsp='pnpm start:prod'
-
-alias nsgm='pnpm nest g module'
-alias nsgs='pnpm nest g service'
-alias nsgc='pnpm nest g controller'
-alias nsgg='pnpm nest g guard'
-alias nsgp='pnpm nest g pipe'
-alias nsgd='pnpm nest g decorator'
-alias nsgmi='pnpm nest g middleware'
-alias nsgint='pnpm nest g interceptor'
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 9. PRISMA 🗄️
-# ══════════════════════════════════════════════════════════════════════════════
-alias pgenx='pnpm exec dotenv -e .env -- prisma generate'
-alias pmig='pnpm exec dotenv -e .env -- prisma migrate dev'
-alias pmig-prod='pnpm exec dotenv -e .env -- prisma migrate deploy'
-alias pstu='pnpm prisma studio'
-alias pgen='pnpm prisma generate'
-alias pdbpsh='pnpm prisma db push'
-alias pdbpull='pnpm prisma db pull'
-
-alias pseed='pnpm exec dotenv -e .env -- prisma db seed'
-alias pcheck='pnpm prisma migrate status'
-
-# Créer une migration sans l'appliquer
-pmig-create() { pnpm exec dotenv -e .env -- prisma migrate dev --name ${1:-migration} --create-only; }
-
+alias pwhy='pnpm why'                 # why is this package installed?
 
 
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 11. AI & LLM 🤖
+# 4. AI & LLM 🤖
 # ══════════════════════════════════════════════════════════════════════════════
 alias gg='gemini'
 alias gpt='codex'
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 12. UTILS & PRODUCTIVITÉ 🌳
+# 5. UTILS & PRODUCTIVITY 🌳
 # ══════════════════════════════════════════════════════════════════════════════
 alias tree-pro='tree -L 10 -I "node_modules|build|dist|.dart_tool|.git|docs|ios|android|.next|.nx|.angular|coverage"'
 alias tree-src='tree -L 5 -I "node_modules|build|dist|.dart_tool|.git" --dirsfirst'
 
-# Réseau
+# Network
 alias ping='ping -c 5'
 
-# Trouver rapidement
-alias rgs='rg --type ts'             # ripgrep sur fichiers TS
+# Find quickly
+alias rgs='rg --type ts'             # ripgrep on TS files
 
 # ==============================================================================
-# FONCTIONS AVANCÉES
+# ADVANCED FUNCTIONS
 # ==============================================================================
 
-# Audit de taille de code (amélioré)
+# Code size audit (improved)
 count-code() {
   local ext=${1:-ts}
   local limit=${2:-200}
@@ -372,59 +159,133 @@ count-code() {
     fi
   done < <(fd --extension "$ext" --exclude "{$ignore}" .)
   echo "──────────────────────────────────────────"
-  echo "  📊 Total: $total fichiers │ 🚨 À refactorer: $flagged"
+  echo "  📊 Total: $total fichiers │ 🚨 To refactor: $flagged"
 }
 alias count-ts='count-code ts'
 alias count-dart='count-code dart'
 alias count-html='count-code html'
 
-# Créer dossier et y aller
+# Create folder and enter
 mkcd() { mkdir -p "$1" && cd "$1"; }
 
-# Extraire n'importe quelle archive
-extract() {
-  if [ -f $1 ]; then
-    case $1 in
-      *.tar.bz2)  tar xjf $1    ;;
-      *.tar.gz)   tar xzf $1    ;;
-      *.bz2)      bunzip2 $1    ;;
-      *.rar)      unrar x $1    ;;
-      *.gz)       gunzip $1     ;;
-      *.tar)      tar xf $1     ;;
-      *.tbz2)     tar xjf $1    ;;
-      *.tgz)      tar xzf $1    ;;
-      *.zip)      unzip $1      ;;
-      *.Z)        uncompress $1 ;;
-      *.7z)       7z x $1       ;;
-      *)          echo "❌ '$1': format inconnu" ;;
-    esac
-  else
-    echo "❌ '$1' n'est pas un fichier valide"
-  fi
+# Extract any archivei
+# Private helper for colored logging with timestamps
+_extract_log() {
+  local log_type="$1"
+  local message="$2"
+  local timestamp
+  timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+
+  case "$log_type" in
+    "info")    echo -e "\e[34mℹ️ [$timestamp] [INFO] $message\e[0m" ;;
+    "success") echo -e "\e[32m✅ [$timestamp] [SUCCESS] $message\e[0m" ;;
+    "error")   echo -e "\e[31m❌ [$timestamp] [ERROR] $message\e[0m" ;;
+  esac
 }
 
-# Backup rapide d'un fichier
+# Extract any archive with rich logging
+extract() {
+  if [ -z "$1" ]; then
+    _extract_log "error" "Usage: extract <archive_file>"
+    return 1
+  fi
+
+  if [ ! -f "$1" ]; then
+    _extract_log "error" "File '$1' not found or invalid"
+    return 1
+  fi
+
+  # Handle case sensitivity safely
+  local file_lc
+  file_lc=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+
+  _extract_log "info" "Starting extraction for: $1"
+
+  case "$file_lc" in
+    *.tar.bz2|*.tar.gz|*.tar.xz|*.tar.zst|*.tgz|*.tbz2|*.txz|*.tar)
+      tar -xf "$1" && _extract_log "success" "Successfully extracted tar archive." || _extract_log "error" "Failed to extract tar archive."
+      ;;
+    *.bz2)
+      bunzip2 "$1" && _extract_log "success" "Successfully extracted bz2 archive." || _extract_log "error" "Failed to extract bz2 archive."
+      ;;
+    *.gz)
+      gunzip "$1" && _extract_log "success" "Successfully extracted gz archive." || _extract_log "error" "Failed to extract gz archive."
+      ;;
+    *.xz)
+      unxz "$1" && _extract_log "success" "Successfully extracted xz archive." || _extract_log "error" "Failed to extract xz archive."
+      ;;
+    *.zst)
+      unzstd "$1" && _extract_log "success" "Successfully extracted zst archive." || _extract_log "error" "Failed to extract zst archive."
+      ;;
+    *.rar)
+      unrar x "$1" && _extract_log "success" "Successfully extracted rar archive." || _extract_log "error" "Failed to extract rar archive."
+      ;;
+    *.zip|*.jar|*.war|*.ear)
+      unzip "$1" && _extract_log "success" "Successfully extracted zip archive." || _extract_log "error" "Failed to extract zip archive."
+      ;;
+    *.7z)
+      7z x "$1" && _extract_log "success" "Successfully extracted 7z archive." || _extract_log "error" "Failed to extract 7z archive."
+      ;;
+    *.z)
+      uncompress "$1" && _extract_log "success" "Successfully extracted Z archive." || _extract_log "error" "Failed to extract Z archive."
+      ;;
+    *)
+      _extract_log "error" "Unsupported format for file: $1"
+      return 1
+      ;;
+  esac
+}
+
+# Quick backup of a file
 bak() { cp "$1" "$1.bak.$(date +%Y%m%d_%H%M%S)"; echo "✅ Backup: $1.bak"; }
 
-# Trouver les process qui bouffent la RAM
+# Find processes eating RAM
 topmem() { ps aux --sort=-%mem | head -${1:-15}; }
 topcpu() { ps aux --sort=-%cpu | head -${1:-15}; }
 
-# Afficher les variables d'env d'un .env
+# Show env variables from a .env
 dotenv-show() { cat ${1:-.env} | grep -v '^#' | grep -v '^$' | sort; }
 
-# Reload la config sans perdre la session
+# Reload config without losing session
 alias reload-safe='exec zsh'
+
+
+# Dotfiles Environment Health Check
+dot-health() {
+  echo "🏥 Dotfiles Health Check"
+  echo "========================"
+  local tools=("bun" "pnpm" "node" "docker" "nx" "ng" "flutter" "rg" "fd" "gh" "git" "tree")
+  for tool in "${tools[@]}"; do
+    if command -v "$tool" >/dev/null 2>&1; then
+      echo -e "  ✅ $tool is installed"
+    else
+      echo -e "  ❌ \e[31m$tool is missing\e[0m"
+    fi
+  done
+  echo "========================"
+}
 
 
 # ==============================================================================
 # 🧩 OPTIONAL MODULES (Sourced if enabled during installation)
 # ==============================================================================
-[ -f ~/.angular_aliases.zsh ] && source ~/.angular_aliases.zsh
-[ -f ~/.docker_aliases.zsh ] && source ~/.docker_aliases.zsh
-[ -f ~/.flutter_aliases.zsh ] && source ~/.flutter_aliases.zsh
+safe_source() {
+  if [ -f "$1" ]; then
+    if zsh -n "$1" >/dev/null 2>&1; then
+      source "$1"
+    else
+      echo "⚠️ Syntax error in $1. File not sourced."
+    fi
+  fi
+}
+
+safe_source ~/.angular_aliases.zsh
+safe_source ~/.docker_aliases.zsh
+safe_source ~/.flutter_aliases.zsh
+safe_source ~/.nestjs_prisma_aliases.zsh
+safe_source ~/.git_aliases.zsh
 
 # ==============================================================================
-# FIN - Chargé avec succès 🎉
+# END - Loaded successfully 🎉
 # ==============================================================================
-# echo "  🚀 Aliases Tahiry chargés — $(date +%H:%M)"
+# echo "  🚀 Aliases Tahiry loaded — $(date +%H:%M)"

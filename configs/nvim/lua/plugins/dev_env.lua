@@ -10,7 +10,7 @@ return {
     cmd = { "DiffviewOpen", "DiffviewFileHistory" }
   },
 
-  -- Auto-completion & Auto-import (Intégré à NvChad)
+  -- Auto-completion & Auto-import (Integrated in NvChad)
   {
     "hrsh7th/nvim-cmp",
     event = "InsertEnter",

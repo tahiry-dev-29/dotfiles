@@ -14,7 +14,7 @@ o.scrolloff = 8
 -- Faster update time for better responsiveness
 o.updatetime = 250
 
--- Désactiver les fichiers swap pour éviter l'erreur E325
+-- Disable swap files to avoid E325 error
 vim.opt.swapfile = false
 vim.opt.backup = false
 vim.opt.writebackup = false

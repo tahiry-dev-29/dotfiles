@@ -65,7 +65,7 @@ function Link-File {
     }
 }
 
-$ConfigApps = @("nvim", "trunk", "lazygit", "lazydocker", "ghostty", "zed")
+$ConfigApps = @("nvim", "trunk", "lazygit", "lazydocker", "ghostty")
 
 foreach ($App in $ConfigApps) {
     $SrcPath = Join-Path -Path $DotfilesDir -ChildPath "configs\$App"
@@ -75,15 +75,6 @@ foreach ($App in $ConfigApps) {
         $DestPath = Join-Path -Path $ConfigDir -ChildPath $App
         Prompt-Install -Name $App -Src $SrcPath -Dest $DestPath
     }
-}
-
-Write-Host "-----------------------------------------------"
-Write-Host "📄 System Files"
-
-$GitconfigSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\gitconfig"
-if (Test-Path -Path $GitconfigSrc) {
-    $GitconfigDest = Join-Path -Path $env:USERPROFILE -ChildPath ".gitconfig"
-    Prompt-Install -Name ".gitconfig" -Src $GitconfigSrc -Dest $GitconfigDest
 }
 
 Write-Host "-----------------------------------------------"
@@ -105,6 +96,18 @@ $FlutterSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\flutter_
 if (Test-Path -Path $FlutterSrc) {
     $FlutterDest = Join-Path -Path $env:USERPROFILE -ChildPath ".flutter_aliases.zsh"
     Prompt-Install -Name "Flutter Aliases" -Src $FlutterSrc -Dest $FlutterDest
+}
+
+$NestjsPrismaSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\nestjs_prisma_aliases.zsh"
+if (Test-Path -Path $NestjsPrismaSrc) {
+    $NestjsPrismaDest = Join-Path -Path $env:USERPROFILE -ChildPath ".nestjs_prisma_aliases.zsh"
+    Prompt-Install -Name "NestJS & Prisma Aliases" -Src $NestjsPrismaSrc -Dest $NestjsPrismaDest
+}
+
+$GitSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\git_aliases.zsh"
+if (Test-Path -Path $GitSrc) {
+    $GitDest = Join-Path -Path $env:USERPROFILE -ChildPath ".git_aliases.zsh"
+    Prompt-Install -Name "Git & GitHub CLI Aliases" -Src $GitSrc -Dest $GitDest
 }
 
 Write-Host "==============================================="

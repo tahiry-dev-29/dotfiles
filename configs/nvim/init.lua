@@ -15,7 +15,7 @@ require("lazy").setup({
   { import = "plugins" },
 }, lazy_config)
 
--- 2. Chargement Thème et Options
+-- 2. Load Theme and Options
 dofile(vim.g.base46_cache .. "defaults")
 dofile(vim.g.base46_cache .. "statusline")
 require "options"
@@ -116,10 +116,10 @@ vim.schedule(function()
     trunk_tui:toggle()
   end, { desc = "Trunk UI Toggle" })
 
-  -- SECOURS : Fermer brutalement le buffer courant (utile si coincé)
+  -- EMERGENCY : Force close current buffer (useful if stuck)
   map("n", "<C-k>", "<cmd>bd!<CR>", { desc = "Force Close Buffer" })
   
-  -- Onglets (Fermeture sécurisée sans erreur E517)
+  -- Tabs (Safe closing without E517 error)
   map("n", "<C-w>", function() 
     local success = pcall(function() require("nvchad.tabufline").close_buffer() end)
     if not success then
@@ -140,6 +140,6 @@ vim.schedule(function()
   -- FORMATAGE (Shift + Alt + F)
   map("n", "<A-S-f>", function() 
     require("conform").format({ lsp_fallback = true }) 
-    vim.notify("Formatage terminé", vim.log.levels.INFO)
+    vim.notify("Formatting complete", vim.log.levels.INFO)
   end, { desc = "Format Code" })
 end)
