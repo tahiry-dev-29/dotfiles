@@ -20,9 +20,10 @@ lint:
     - prettier@3.8.3       # TS/JS/JSON/CSS formatter
     - eslint@8.57.1        # TypeScript linter
     - git-diff-check       # Git whitespace checks
-    - markdownlint@0.48.0  # Markdown linter
+
     - dart@3.8.1           # Dart/Flutter analyzer & formatter
   disabled:
+    - markdownlint
     - actionlint
     - bandit
     - black
