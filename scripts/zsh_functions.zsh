@@ -171,13 +171,40 @@ function clip-file() {
 }
 
 function clip-watch() {
-  if pgrep -f "wl-paste --watch" >/dev/null 2>&1; then
+  if pgrep -f "wl-paste --watch" >/dev/null 2>&1 || pgrep -f "clip-watch-polling" >/dev/null 2>&1; then
     echo "✅ Clipboard watcher is already running."
     return 0
   fi
   mkdir -p "$(dirname "$CLIP_HISTORY_FILE")"
-  wl-paste --watch bash -c 'printf "[%s] %s\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$(wl-paste 2>/dev/null)" >> '"$CLIP_HISTORY_FILE" &!
-  echo "👁️  Clipboard watcher started in background."
+  
+  if echo "$XDG_CURRENT_DESKTOP" | grep -iq "GNOME"; then
+    # GNOME Wayland doesn't support wlroots data-control needed for wl-paste --watch
+    # Using a lightweight polling fallback
+    (
+      exec -a clip-watch-polling bash -c '
+        LAST_CLIP=""
+        while true; do
+          # Only capture plain text to avoid saving images or binary data
+          CURRENT_CLIP=$(wl-paste --type text/plain 2>/dev/null)
+          if [[ "$CURRENT_CLIP" != "$LAST_CLIP" && -n "$CURRENT_CLIP" ]]; then
+            # Replace newlines with spaces to keep history flat (one line per entry)
+            FLAT_CLIP=$(echo "$CURRENT_CLIP" | tr "\n" " ")
+            printf "[%s] %s\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$FLAT_CLIP" >> '"$CLIP_HISTORY_FILE"'
+            LAST_CLIP="$CURRENT_CLIP"
+          fi
+          sleep 1
+        done
+      '
+    ) &!
+    echo "👁️  Clipboard watcher started in background (GNOME mode)."
+  else
+    wl-paste --type text/plain --watch bash -c '
+      CURRENT_CLIP=$(wl-paste --type text/plain 2>/dev/null)
+      FLAT_CLIP=$(echo "$CURRENT_CLIP" | tr "\n" " ")
+      printf "[%s] %s\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$FLAT_CLIP" >> '"$CLIP_HISTORY_FILE"'
+    ' &!
+    echo "👁️  Clipboard watcher started in background."
+  fi
 }
 
 # Code size audit
