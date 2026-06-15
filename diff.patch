@@ -1,0 +1,3866 @@
+diff --git a/config_tahiry.install.sh b/config_tahiry.install.sh
+index 86978ca..3b016fd 100755
+--- a/config_tahiry.install.sh
++++ b/config_tahiry.install.sh
+@@ -28,11 +28,11 @@ echo "📦 System Dependencies"
+ read -p "  [?] Do you want to auto-install required system tools (tree, ripgrep, fd, zoxide, bun, pnpm, gh)? [Y/n] " ans_deps
+ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
+     echo "  🔄 Detecting OS and installing packages..."
+     if command -v apt-get &> /dev/null; then
+         sudo apt-get update
+-        sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip git-crypt
++        sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip git-crypt stow
+         
+         # GitHub CLI for APT
+         if ! command -v gh &> /dev/null; then
+             echo "  🐙 Installing GitHub CLI..."
+             curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+@@ -40,15 +40,15 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
+             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+             sudo apt-get update
+             sudo apt-get install -y gh
+         fi
+     elif command -v brew &> /dev/null; then
+-        brew install tree ripgrep zoxide fd psmisc curl wget unzip gh git-crypt
++        brew install tree ripgrep zoxide fd psmisc curl wget unzip gh git-crypt stow
+     elif command -v pacman &> /dev/null; then
+-        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip github-cli git-crypt
++        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip github-cli git-crypt stow
+     else
+-        echo "  ⚠️ Unsupported package manager. Please install tree, ripgrep, fd, and zoxide manually."
++        echo "  ⚠️ Unsupported package manager. Please install tree, ripgrep, fd, zoxide, and stow manually."
+     fi
+ 
+     # Install Bun
+     if ! command -v bun &> /dev/null; then
+         echo "  🍞 Installing Bun..."
+@@ -100,29 +100,19 @@ if [[ "$ans_font" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
+         fc-cache -f "$FONT_DIR"
+     fi
+     echo "  ✅ Fonts installed successfully!"
+ fi
+ 
+-# Function to safely create symlinks
+-link_file() {
+-    local src=$1
+-    local dest=$2
+-
+-    if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then
+-        echo "✅ Already linked: $dest"
+-        return
+-    fi
+-
+-    if [ -e "$dest" ] || [ -d "$dest" ]; then
+-        local backup_name="${dest}.${CURRENT_DATE}.bak"
+-        echo "📦 Backing up $dest to $backup_name"
+-        mv "$dest" "$backup_name"
+-    fi
+-
+-    echo "🔗 Symlinking: $dest -> $src"
+-    mkdir -p "$(dirname "$dest")"
+-    ln -sf "$src" "$dest"
++# Function to stow applications
++stow_app() {
++    local app=$1
++    local target=$2
++    
++    echo "🔗 Stowing: $app"
++    stow -t "$target" -d "$DOTFILES_DIR/stow" "$app" || {
++        echo "⚠️  Stow encountered conflicts for $app. Please resolve them and re-run, or use stow --adopt."
++    }
+ }
+ 
+ # 4. Interactive Menu
+ echo ""
+ echo "Please select the configurations you want to install:"
+@@ -146,12 +136,12 @@ echo "🚀 Applying configurations..."
+ 
+ mkdir -p "$CONFIG_DIR"
+ 
+ # Standard Apps
+ for app in "nvim" "trunk" "lazygit" "lazydocker" "fish" "ghostty"; do
+-    if [ "${wants[$app]}" = true ] && [ -d "$DOTFILES_DIR/configs/$app" ]; then
+-        link_file "$DOTFILES_DIR/configs/$app" "$CONFIG_DIR/$app"
++    if [ "${wants[$app]}" = true ] && [ -d "$DOTFILES_DIR/stow/$app" ]; then
++        stow_app "$app" "$HOME"
+     fi
+ done
+ 
+ 
+ # ZSH Specific Logic
+@@ -190,39 +180,37 @@ if [ "${wants[zsh]}" = true ]; then
+         fi
+         
+         echo "  ✅ Zsh plugins installed/updated successfully!"
+     fi
+ 
+-    [ -f "$DOTFILES_DIR/configs/zshrc" ] && link_file "$DOTFILES_DIR/configs/zshrc" "$HOME/.zshrc"
+-    [ -f "$DOTFILES_DIR/configs/zsh_aliases" ] && link_file "$DOTFILES_DIR/configs/zsh_aliases" "$HOME/.zsh_aliases"
+-    [ -f "$DOTFILES_DIR/configs/p10k.zsh" ] && link_file "$DOTFILES_DIR/configs/p10k.zsh" "$HOME/.p10k.zsh"
++    [ -d "$DOTFILES_DIR/stow/zsh" ] && stow_app "zsh" "$HOME"
+ 
+     echo ""
+     echo "🧩 ZSH Optional Modules"
+     read -p "  [?] Do you want to enable the Angular & Nx Aliases? [y/N] " ans_angular
+     if [[ "$ans_angular" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+-        link_file "$DOTFILES_DIR/configs/optional/angular_aliases.zsh" "$HOME/.angular_aliases.zsh"
++        [ -f "$DOTFILES_DIR/stow/zsh-optional/.angular_aliases.zsh" ] && stow -t "$HOME" -d "$DOTFILES_DIR/stow" zsh-optional
+     fi
+ 
+     read -p "  [?] Do you want to enable the Docker Aliases? [y/N] " ans_docker
+     if [[ "$ans_docker" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+-        link_file "$DOTFILES_DIR/configs/optional/docker_aliases.zsh" "$HOME/.docker_aliases.zsh"
++        [ -f "$DOTFILES_DIR/stow/zsh-optional/.docker_aliases.zsh" ] && stow -t "$HOME" -d "$DOTFILES_DIR/stow" zsh-optional
+     fi
+ 
+     read -p "  [?] Do you want to enable the Flutter Aliases? [y/N] " ans_flutter
+     if [[ "$ans_flutter" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+-        link_file "$DOTFILES_DIR/configs/optional/flutter_aliases.zsh" "$HOME/.flutter_aliases.zsh"
++        [ -f "$DOTFILES_DIR/stow/zsh-optional/.flutter_aliases.zsh" ] && stow -t "$HOME" -d "$DOTFILES_DIR/stow" zsh-optional
+     fi
+ 
+     read -p "  [?] Do you want to enable the NestJS & Prisma Aliases? [y/N] " ans_nestjs
+     if [[ "$ans_nestjs" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+-        link_file "$DOTFILES_DIR/configs/optional/nestjs_prisma_aliases.zsh" "$HOME/.nestjs_prisma_aliases.zsh"
++        [ -f "$DOTFILES_DIR/stow/zsh-optional/.nestjs_prisma_aliases.zsh" ] && stow -t "$HOME" -d "$DOTFILES_DIR/stow" zsh-optional
+     fi
+ 
+     read -p "  [?] Do you want to enable the Git & GitHub CLI Aliases? [y/N] " ans_git
+     if [[ "$ans_git" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+-        link_file "$DOTFILES_DIR/configs/optional/git_aliases.zsh" "$HOME/.git_aliases.zsh"
++        [ -f "$DOTFILES_DIR/stow/zsh-optional/.git_aliases.zsh" ] && stow -t "$HOME" -d "$DOTFILES_DIR/stow" zsh-optional
+     fi
+ fi
+ 
+ echo "==============================================="
+ echo "🎉 Installation complete!"
+diff --git a/scripts/gnome-dconf.sh b/scripts/gnome-dconf.sh
+index c9ed61e..2390d66 100755
+--- a/scripts/gnome-dconf.sh
++++ b/scripts/gnome-dconf.sh
+@@ -2,11 +2,11 @@
+ 
+ # ==============================================================================
+ # GNOME Dconf Backup & Restore
+ # ==============================================================================
+ 
+-BACKUP_DIR="$HOME/dotfiles/configs/gnome"
++BACKUP_DIR="$HOME/dotfiles/stow/gnome"
+ mkdir -p "$BACKUP_DIR"
+ 
+ echo "╔══════════════════════════════════════════════════╗"
+ echo "║             GNOME DCONF MANAGER                  ║"
+ echo "╚══════════════════════════════════════════════════╝"
+diff --git a/stow/fish/.config/fish/conf.d/uv.env.fish b/stow/fish/.config/fish/conf.d/uv.env.fish
+new file mode 100644
+index 0000000..d97734b
+--- /dev/null
++++ b/stow/fish/.config/fish/conf.d/uv.env.fish
+@@ -0,0 +1,2 @@
++
++source "$HOME/.local/share/../bin/env.fish"
+diff --git a/stow/ghostty/.config/ghostty/auto/theme.ghostty b/stow/ghostty/.config/ghostty/auto/theme.ghostty
+new file mode 100644
+index 0000000..185fe39
+--- /dev/null
++++ b/stow/ghostty/.config/ghostty/auto/theme.ghostty
+@@ -0,0 +1 @@
++theme = Breeze
+diff --git a/stow/ghostty/.config/ghostty/config b/stow/ghostty/.config/ghostty/config
+new file mode 100644
+index 0000000..ad2ee87
+--- /dev/null
++++ b/stow/ghostty/.config/ghostty/config
+@@ -0,0 +1,35 @@
++# --- Appearance & Theme ---
++# Remove the "dark:" prefix which causes errors
++theme = catppuccin-mocha
++font-family = "JetBrains Mono"
++font-size = 11
++
++# --- Curseur ---
++# Le champ exact est 'cursor-style-blink'
++cursor-style = block
++cursor-style-blink = true
++
++# --- Fenêtre & Design ---
++window-decoration = true
++window-padding-x = 8
++window-padding-y = 8
++
++# Names simplified (removed "window-")
++background-opacity = 0.95
++background-blur-radius = 20
++
++# --- Interface Linux ---
++gtk-tabs-location = top
++
++# --- Raccourcis (Multiplexage) ---
++keybind = ctrl+shift+f=unbind
++keybind = ctrl+shift+e=new_split:right
++keybind = ctrl+shift+o=new_split:down
++keybind = ctrl+shift+h=goto_split:left
++keybind = ctrl+shift+j=goto_split:bottom
++keybind = ctrl+shift+k=goto_split:top
++keybind = ctrl+shift+l=goto_split:right
++
++keybind = ctrl+shift+p=unbind
++keybind = ctrl+shift+t=new_tab
++keybind = ctrl+shift+n=next_tab
+diff --git a/stow/ghostty/.config/ghostty/config.ghostty b/stow/ghostty/.config/ghostty/config.ghostty
+new file mode 100644
+index 0000000..5af19a2
+--- /dev/null
++++ b/stow/ghostty/.config/ghostty/config.ghostty
+@@ -0,0 +1,43 @@
++# --- Splits & Tabs ---
++keybind = ctrl+shift+right=new_split:right
++keybind = ctrl+shift+down=new_split:down
++keybind = ctrl+shift+left=new_split:left
++keybind = ctrl+shift+up=new_split:up
++keybind = alt+w=close_surface
++keybind = alt+shift+w=close_tab
++
++# --- Navigation (Alt + Arrows) ---
++keybind = alt+left=goto_split:left
++keybind = alt+down=goto_split:down
++keybind = alt+up=goto_split:up
++keybind = alt+right=goto_split:right
++
++# --- Mode Zoom (Style Tmux) ---
++# Appuie une fois pour agrandir, une fois pour revenir
++keybind = ctrl+shift+z=toggle_split_zoom
++
++# --- Font Zoom (Taille de police) ---
++keybind = ctrl+0=reset_font_size
++keybind = ctrl+shift+a=toggle_tab_overview
++
++# --- UI & Appearance ---
++# theme = Material Design Colors
++theme = Violet Dark
++
++window-decoration = false
++window-show-tab-bar = never
++background-opacity = 0.97
++background-blur-radius = 20
++font-family = "JetBrains Mono"
++font-size = 11
++cursor-style = block
++cursor-style-blink = true
++# gtk-tabs-location = top
++
++split-divider-color = #444444
++
++# --- Suppression Scrollbar & Optimisation Espace ---
++window-padding-x = 5
++window-padding-y = 5
++window-padding-balance = true
++mouse-hide-while-typing = true
+diff --git a/stow/ghostty/.config/ghostty/config.ghostty.bak.20260609_175654 b/stow/ghostty/.config/ghostty/config.ghostty.bak.20260609_175654
+new file mode 100644
+index 0000000..95c13d7
+--- /dev/null
++++ b/stow/ghostty/.config/ghostty/config.ghostty.bak.20260609_175654
+@@ -0,0 +1,41 @@
++# --- Splits & Tabs ---
++keybind = ctrl+shift+right=new_split:right
++keybind = ctrl+shift+down=new_split:down
++keybind = ctrl+shift+left=new_split:left
++keybind = ctrl+shift+up=new_split:up
++keybind = alt+w=close_surface
++keybind = alt+shift+w=close_tab
++
++# --- Navigation (Alt + Arrows) ---
++keybind = alt+left=goto_split:left
++keybind = alt+down=goto_split:down
++keybind = alt+up=goto_split:up
++keybind = alt+right=goto_split:right
++
++# --- Mode Zoom (Style Tmux) ---
++# Appuie une fois pour agrandir, une fois pour revenir
++keybind = ctrl+shift+z=toggle_split_zoom
++
++# --- Font Zoom (Taille de police) ---
++keybind = ctrl+0=reset_font_size
++keybind = ctrl+shift+a=toggle_tab_overview
++
++# --- UI & Appearance ---
++theme = Material Design Colors
++window-decoration = false
++ window-show-tab-bar = never
++background-opacity = 0.95
++background-blur-radius = 20
++font-family = "JetBrains Mono"
++font-size = 11
++cursor-style = block
++cursor-style-blink = true
++gtk-tabs-location = top
++
++split-divider-color = #444444
++
++# --- Suppression Scrollbar & Optimisation Espace ---
++window-padding-x = 5
++window-padding-y = 5
++window-padding-balance = true
++mouse-hide-while-typing = true
+diff --git a/stow/ghostty/.config/ghostty/themes/catppuccin-mocha b/stow/ghostty/.config/ghostty/themes/catppuccin-mocha
+new file mode 100644
+index 0000000..b1eab42
+--- /dev/null
++++ b/stow/ghostty/.config/ghostty/themes/catppuccin-mocha
+@@ -0,0 +1,21 @@
++palette = 0=#45475a
++palette = 1=#f38ba8
++palette = 2=#a6e3a1
++palette = 3=#f9e2af
++palette = 4=#89b4fa
++palette = 5=#f5c2e7
++palette = 6=#94e2d5
++palette = 7=#bac2de
++palette = 8=#585b70
++palette = 9=#f38ba8
++palette = 10=#a6e3a1
++palette = 11=#f9e2af
++palette = 12=#89b4fa
++palette = 13=#f5c2e7
++palette = 14=#94e2d5
++palette = 15=#a6adc8
++background = #1e1e2e
++foreground = #cdd6f4
++cursor-color = #f5e0dc
++selection-background = #313244
++selection-foreground = #cdd6f4
+diff --git a/stow/gnome/custom_keybindings.ini b/stow/gnome/custom_keybindings.ini
+new file mode 100644
+index 0000000..42e9505
+--- /dev/null
++++ b/stow/gnome/custom_keybindings.ini
+@@ -0,0 +1,8 @@
++[/]
++control-center=['<Super>i']
++custom-keybindings=@as []
++home=['<Super>e']
++rotate-video-lock-static=['<Super>o', 'XF86RotationLockToggle']
++search=['<Super>s']
++terminal=['<Super>t']
++www=['<Super>b']
+diff --git a/stow/lazydocker/.config/lazydocker/config.yml b/stow/lazydocker/.config/lazydocker/config.yml
+new file mode 100644
+index 0000000..e69de29
+diff --git a/stow/lazygit/.config/lazygit/config.yml b/stow/lazygit/.config/lazygit/config.yml
+new file mode 100644
+index 0000000..569ca01
+--- /dev/null
++++ b/stow/lazygit/.config/lazygit/config.yml
+@@ -0,0 +1,4 @@
++git:
++  pagers:
++    - colorArg: always
++      pager: delta --dark --paging=never
+diff --git a/stow/nvim/.config/nvim/LICENSE b/stow/nvim/.config/nvim/LICENSE
+new file mode 100644
+index 0000000..fdddb29
+--- /dev/null
++++ b/stow/nvim/.config/nvim/LICENSE
+@@ -0,0 +1,24 @@
++This is free and unencumbered software released into the public domain.
++
++Anyone is free to copy, modify, publish, use, compile, sell, or
++distribute this software, either in source code form or as a compiled
++binary, for any purpose, commercial or non-commercial, and by any
++means.
++
++In jurisdictions that recognize copyright laws, the author or authors
++of this software dedicate any and all copyright interest in the
++software to the public domain. We make this dedication for the benefit
++of the public at large and to the detriment of our heirs and
++successors. We intend this dedication to be an overt act of
++relinquishment in perpetuity of all present and future rights to this
++software under copyright law.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
++OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
++ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
++OTHER DEALINGS IN THE SOFTWARE.
++
++For more information, please refer to <https://unlicense.org>
+diff --git a/stow/nvim/.config/nvim/README.md b/stow/nvim/.config/nvim/README.md
+new file mode 100644
+index 0000000..769fbdf
+--- /dev/null
++++ b/stow/nvim/.config/nvim/README.md
+@@ -0,0 +1,9 @@
++**This repo is supposed to be used as config by NvChad users!**
++
++- The main nvchad repo (NvChad/NvChad) is used as a plugin by this repo.
++- So you just import its modules , like `require "nvchad.options" , require "nvchad.mappings"`
++- So you can delete the .git from this repo ( when you clone it locally ) or fork it :)
++
++# Credits
++
++1) Lazyvim starter https://github.com/LazyVim/starter as nvchad's starter was inspired by Lazyvim's . It made a lot of things easier!
+diff --git a/stow/nvim/.config/nvim/init.lua b/stow/nvim/.config/nvim/init.lua
+new file mode 100644
+index 0000000..7cd6c72
+--- /dev/null
++++ b/stow/nvim/.config/nvim/init.lua
+@@ -0,0 +1,145 @@
++vim.g.base46_cache = vim.fn.stdpath "data" .. "/base46/"
++vim.g.mapleader = " "
++
++-- 1. Bootstrapping NvChad
++local lazypath = vim.fn.stdpath "data" .. "/lazy/lazy.nvim"
++if not (vim.uv or vim.loop).fs_stat(lazypath) then
++  local repo = "https://github.com/folke/lazy.nvim.git"
++  vim.fn.system { "git", "clone", "--filter=blob:none", repo, "--branch=stable", lazypath }
++end
++vim.opt.rtp:prepend(lazypath)
++
++local lazy_config = require "configs.lazy"
++require("lazy").setup({
++  { "NvChad/NvChad", lazy = false, branch = "v2.5", import = "nvchad.plugins" },
++  { import = "plugins" },
++}, lazy_config)
++
++-- 2. Load Theme and Options
++dofile(vim.g.base46_cache .. "defaults")
++dofile(vim.g.base46_cache .. "statusline")
++require "options"
++require "nvchad.autocmds"
++
++-- 3.5 PROJECT DIAGNOSTICS SCANNER
++require("configs.diagnostics").setup()
++
++-- 3. CONFIGURATION DES ERREURS VISUELLES (PROBLEMS)
++vim.diagnostic.config({
++  virtual_text = {
++    prefix = "■", -- More visible prefix
++    spacing = 4,
++  },
++  signs = true,
++  underline = true,
++  update_in_insert = false,
++  severity_sort = true,
++  float = {
++    border = "rounded",
++    source = "always",
++    header = "",
++    prefix = "",
++  },
++})
++
++-- Icônes dans la marge
++local signs = { Error = " ", Warn = " ", Hint = "󰠠 ", Info = " " }
++for type, icon in pairs(signs) do
++  local hl = "DiagnosticSign" .. type
++  vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
++end
++
++-- 4. FORCER LES RACCOURCIS (CTRL+J pour TOUTE la codebase)
++local map = vim.keymap.set
++
++vim.schedule(function()
++  -- Sidebar & Recherche
++  map("n", "<C-b>", "<cmd>NvimTreeToggle<CR>", { desc = "Sidebar" })
++  map("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Explorateur" })
++  map("n", "<C-p>", "<cmd>Telescope find_files<CR>", { desc = "Find Files" })
++  map({"n", "i", "v"}, "<C-S-p>", "<cmd>Telescope commands<CR>", { desc = "Command Palette" })
++  map("n", "<C-f>", "<cmd>Telescope live_grep<CR>", { desc = "Search Project" })
++  map({"n", "i", "v"}, "<C-S-f>", "<cmd>Telescope live_grep<CR>", { desc = "Search Project" })
++  map("n", "<C-s>", "<cmd>w<CR>", { desc = "Save" })
++  map("i", "<C-s>", "<cmd>w<CR><ESC>", { desc = "Save" })
++
++  -- Edition
++  map({"n", "i", "v"}, "<C-z>", "<cmd>undo<CR>")
++  map({"n", "i", "v"}, "<C-y>", "<cmd>redo<CR>")
++  map({"n", "v"}, "<C-a>", "ggVG")
++  
++  -- Copier/Couper/Coller
++  map("v", "<C-c>", '"+y')
++  map("v", "<C-x>", '"+d')
++  map({"n", "i", "v"}, "<C-v>", '"+p')
++
++   -- PANNEAU DES ERREURS (WORKSPACE DIAGNOSTICS)
++   map("n", "<C-j>", "<cmd>Trouble diagnostics toggle<CR>", { desc = "Project Problems" })
++   map("n", "<leader>ds", "<cmd>DiagScan<CR>", { desc = "Scan Project Diagnostics" })
++   map("n", "<leader>dc", "<cmd>DiagClear<CR>", { desc = "Clear Project Diagnostics" })
++  
++  -- LAZYGIT (Toggle robuste + Nettoyage terminaux fantômes)
++  map("n", "<C-g>", function()
++    local bufs = vim.api.nvim_list_bufs()
++    local found = false
++    for _, b in ipairs(bufs) do
++      local ft = vim.bo[b].filetype
++      if ft == "lazygit" or ft == "terminal" then
++        vim.api.nvim_buf_delete(b, { force = true })
++        found = true
++      end
++    end
++    if not found then
++      vim.cmd("LazyGit")
++    end
++  end, { desc = "Git UI Toggle" })
++
++  -- LAZYDOCKER
++  map("n", "<C-d>", function()
++    require("lazydocker").open()
++  end, { desc = "Docker UI Toggle" })
++
++  -- TRUNK (TUI Diagnostic)
++  map("n", "<C-t>", function()
++    local Terminal = require("toggleterm.terminal").Terminal
++    local trunk_tui = Terminal:new({ 
++      cmd = "trunk check --show-existing", 
++      hidden = true, 
++      direction = "float",
++      close_on_exit = false,
++      float_opts = { border = "double" },
++      -- Permet de fermer avec 'q' une fois le scan fini
++      on_open = function(term)
++        vim.api.nvim_buf_set_keymap(term.bufnr, "n", "q", "<cmd>close<CR>", {noremap = true, silent = true})
++      end,
++    })
++    trunk_tui:toggle()
++  end, { desc = "Trunk UI Toggle" })
++
++  -- EMERGENCY : Force close current buffer (useful if stuck)
++  map("n", "<C-k>", "<cmd>bd!<CR>", { desc = "Force Close Buffer" })
++  
++  -- Tabs (Safe closing without E517 error)
++  map("n", "<C-w>", function() 
++    local success = pcall(function() require("nvchad.tabufline").close_buffer() end)
++    if not success then
++      pcall(function() vim.cmd("bd") end)
++    end
++  end, { desc = "Close Buffer" })
++
++  -- MENU NVIM
++  map("n", "<leader>m", "<cmd>Nvdash<CR>", { desc = "Afficher le Menu Nvim (Dashboard)" })
++  pcall(function()
++    map("n", "<RightMouse>", function()
++      vim.cmd.exec '"normal! \\<RightMouse>"'
++      local options = vim.bo.ft == "NvimTree" and "nvimtree" or "default"
++      require("menu").open(options, { mouse = true })
++    end, { desc = "Ouvrir le menu contextuel" })
++  end)
++  
++  -- FORMATAGE (Shift + Alt + F)
++  map("n", "<A-S-f>", function() 
++    require("conform").format({ lsp_fallback = true }) 
++    vim.notify("Formatting complete", vim.log.levels.INFO)
++  end, { desc = "Format Code" })
++end)
+diff --git a/stow/nvim/.config/nvim/lazy-lock.json b/stow/nvim/.config/nvim/lazy-lock.json
+new file mode 100644
+index 0000000..0a1ea62
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lazy-lock.json
+@@ -0,0 +1,40 @@
++{
++  "LuaSnip": { "branch": "master", "commit": "0abc8f390b278c3b4aabc4c004ac8a088b65cf24" },
++  "NvChad": { "branch": "v2.5", "commit": "d042cc975247c2aa55fcb228e5d146dc1dc6c648" },
++  "base46": { "branch": "v3.0", "commit": "884b990dcdbe07520a0892da6ba3e8d202b46337" },
++  "cmp-async-path": { "branch": "main", "commit": "f8af3f726e07f2e9d37672eaa9102581aefce149" },
++  "cmp-buffer": { "branch": "main", "commit": "b74fab3656eea9de20a9b8116afa3cfc4ec09657" },
++  "cmp-nvim-lsp": { "branch": "main", "commit": "cbc7b02bb99fae35cb42f514762b89b5126651ef" },
++  "cmp-nvim-lua": { "branch": "main", "commit": "e3a22cb071eb9d6508a156306b102c45cd2d573d" },
++  "cmp_luasnip": { "branch": "master", "commit": "98d9cb5c2c38532bd9bdb481067b20fea8f32e90" },
++  "conform.nvim": { "branch": "master", "commit": "619363c30309d29ffa631e67c8183f2a72caa373" },
++  "diffview.nvim": { "branch": "main", "commit": "4516612fe98ff56ae0415a259ff6361a89419b0a" },
++  "friendly-snippets": { "branch": "main", "commit": "6cd7280adead7f586db6fccbd15d2cac7e2188b9" },
++  "gitsigns.nvim": { "branch": "main", "commit": "dd3f588bacbeb041be6facf1742e42097f62165d" },
++  "indent-blankline.nvim": { "branch": "master", "commit": "d28a3f70721c79e3c5f6693057ae929f3d9c0a03" },
++  "lazy.nvim": { "branch": "main", "commit": "306a05526ada86a7b30af95c5cc81ffba93fef97" },
++  "lazydocker.nvim": { "branch": "main", "commit": "e971ef5d5bba424583c7b8c844e075cdae09f4ad" },
++  "lazygit.nvim": { "branch": "main", "commit": "a04ad0dbc725134edbee3a5eea29290976695357" },
++  "mason.nvim": { "branch": "main", "commit": "bb639d4bf385a4d89f478b83af4d770be05ab7eb" },
++  "menu": { "branch": "main", "commit": "7a0a4a2896b715c066cfbe320bdc048091874cc6" },
++  "minty": { "branch": "main", "commit": "aafc9e8e0afe6bf57580858a2849578d8d8db9e0" },
++  "neovim-trunk": { "branch": "main", "commit": "a4521772dd7761f9a504b0e28ef6683bc81c8f53" },
++  "noice.nvim": { "branch": "main", "commit": "7bfd942445fb63089b59f97ca487d605e715f155" },
++  "nui.nvim": { "branch": "main", "commit": "de740991c12411b663994b2860f1a4fd0937c130" },
++  "nvim-autopairs": { "branch": "master", "commit": "7b9923abad60b903ece7c52940e1321d39eccc79" },
++  "nvim-cmp": { "branch": "main", "commit": "a1d504892f2bc56c2e79b65c6faded2fd21f3eca" },
++  "nvim-lspconfig": { "branch": "master", "commit": "6f76a3eeadc2ee235d74cd7d5319e95a261084af" },
++  "nvim-notify": { "branch": "master", "commit": "8701bece920b38ea289b457f902e2ad184131a5d" },
++  "nvim-tree.lua": { "branch": "master", "commit": "07f541fcaa4a5ae019598240362449ab7e9812b3" },
++  "nvim-treesitter": { "branch": "main", "commit": "4916d6592ede8c07973490d9322f187e07dfefac" },
++  "nvim-web-devicons": { "branch": "master", "commit": "dfbfaa967a6f7ec50789bead7ef87e336c1fa63c" },
++  "plenary.nvim": { "branch": "master", "commit": "74b06c6c75e4eeb3108ec01852001636d85a932b" },
++  "telescope.nvim": { "branch": "master", "commit": "7d324792b7943e4aa16ad007212e6acc6f9fe335" },
++  "toggleterm.nvim": { "branch": "main", "commit": "9a88eae817ef395952e08650b3283726786fb5fb" },
++  "trouble.nvim": { "branch": "main", "commit": "bd67efe408d4816e25e8491cc5ad4088e708a69a" },
++  "ui": { "branch": "v3.0", "commit": "3e67e9d5325fd47fdbc90ca00a147db2f3525754" },
++  "vim-graphql": { "branch": "master", "commit": "640d32063cd2526e2395db1b67fcd733524099e2" },
++  "vim-prisma": { "branch": "main", "commit": "95c5b25066efb34c75bce78698baa371fe0ee7c2" },
++  "volt": { "branch": "main", "commit": "620de1321f275ec9d80028c68d1b88b409c0c8b1" },
++  "which-key.nvim": { "branch": "main", "commit": "3aab2147e74890957785941f0c1ad87d0a44c15a" }
++}
+diff --git a/stow/nvim/.config/nvim/lua/autocmds.lua b/stow/nvim/.config/nvim/lua/autocmds.lua
+new file mode 100644
+index 0000000..d2db0bb
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/autocmds.lua
+@@ -0,0 +1 @@
++require "nvchad.autocmds"
+diff --git a/stow/nvim/.config/nvim/lua/chadrc.lua b/stow/nvim/.config/nvim/lua/chadrc.lua
+new file mode 100644
+index 0000000..dc7fa60
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/chadrc.lua
+@@ -0,0 +1,14 @@
++---@type ChadrcConfig
++local M = {}
++
++M.base46 = {
++  theme = "onedark",
++  theme_toggle = { "onedark", "one_light" },
++  transparency = false,
++}
++
++M.ui = { theme = "onedark" } -- Default NvChad Theme
++
++M.mappings = require "mappings"
++
++return M
+diff --git a/stow/nvim/.config/nvim/lua/configs/conform.lua b/stow/nvim/.config/nvim/lua/configs/conform.lua
+new file mode 100644
+index 0000000..6957fa6
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/configs/conform.lua
+@@ -0,0 +1,14 @@
++local options = {
++  formatters_by_ft = {
++    javascript = { "prettierd" },
++    typescript = { "prettierd" },
++    angular = { "prettierd" },
++    html = { "prettierd" },
++    css = { "prettierd" },
++    scss = { "prettierd" },
++    json = { "prettierd" },
++    prisma = { "prettierd" },
++  },
++  format_on_save = { timeout_ms = 500, lsp_fallback = true },
++}
++return options
+diff --git a/stow/nvim/.config/nvim/lua/configs/diagnostics.lua b/stow/nvim/.config/nvim/lua/configs/diagnostics.lua
+new file mode 100644
+index 0000000..8992550
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/configs/diagnostics.lua
+@@ -0,0 +1,339 @@
++-- Project-wide diagnostics scanner (VSCode-style Problems panel)
++local M = {}
++
++local ns = vim.api.nvim_create_namespace("project_diagnostics")
++local scan_timer = nil
++local is_scanning = false
++
++--- Detect available project scanners from config files
++function M.detect_scanners()
++  local cwd = vim.fn.getcwd()
++  local scanners = {}
++  local runner = vim.fn.executable("bunx") == 1 and "bunx" or "npx"
++
++  -- TypeScript
++  if vim.fn.filereadable(cwd .. "/tsconfig.json") == 1 then
++    table.insert(scanners, {
++      name = "tsc",
++      cmd = { runner, "tsc", "--noEmit", "--pretty", "false" },
++      parser = M.parse_tsc,
++    })
++  end
++
++  -- ESLint (flat or legacy config)
++  local eslint_files = {
++    "eslint.config.js", "eslint.config.mjs", "eslint.config.ts",
++    ".eslintrc.json", ".eslintrc.js", ".eslintrc.yml",
++  }
++  for _, f in ipairs(eslint_files) do
++    if vim.fn.filereadable(cwd .. "/" .. f) == 1 then
++      table.insert(scanners, {
++        name = "eslint",
++        cmd = { runner, "eslint", ".", "--format", "unix", "--quiet" },
++        parser = M.parse_eslint,
++      })
++      break
++    end
++  end
++
++  -- Dart / Flutter
++  if vim.fn.filereadable(cwd .. "/pubspec.yaml") == 1 then
++    table.insert(scanners, {
++      name = "dart",
++      cmd = { "dart", "analyze", "--format", "machine" },
++      parser = M.parse_dart,
++    })
++  end
++
++  -- Trunk (General purpose TUI diagnostics)
++  if vim.fn.isdirectory(cwd .. "/.trunk") == 1 then
++    table.insert(scanners, {
++      name = "trunk",
++      cmd = { "trunk", "check", "--format", "json", "--quiet" },
++      parser = M.parse_trunk,
++    })
++  end
++
++  -- Angular (ng lint via ESLint — only if no standalone eslint config)
++  if vim.fn.filereadable(cwd .. "/angular.json") == 1
++    and #vim.tbl_filter(function(s) return s.name == "eslint" end, scanners) == 0
++  then
++    table.insert(scanners, {
++      name = "ng-lint",
++      cmd = { runner, "ng", "lint", "--format", "prose" },
++      parser = M.parse_ng_lint,
++    })
++  end
++
++  return scanners
++end
++
++--
++-- PARSERS: each returns { [abs_filename] = { diagnostic, ... } }
++--
++
++--- tsc output: src/file.ts(12,5): error TS2345: message
++function M.parse_tsc(output)
++  local results = {}
++  for _, line in ipairs(vim.split(output, "\n")) do
++    local file, row, col, sev, code, msg =
++      line:match("^(.+)%((%d+),(%d+)%): (%w+) (TS%d+): (.+)$")
++    if file then
++      local abs = vim.fn.fnamemodify(file, ":p")
++      results[abs] = results[abs] or {}
++      table.insert(results[abs], {
++        lnum = tonumber(row) - 1,
++        col = tonumber(col) - 1,
++        severity = sev == "error"
++          and vim.diagnostic.severity.ERROR
++          or vim.diagnostic.severity.WARN,
++        message = msg,
++        source = "tsc",
++        code = code,
++      })
++    end
++  end
++  return results
++end
++
++--- eslint unix format: /path/file.ts:12:5: msg [severity/rule]
++function M.parse_eslint(output)
++  local results = {}
++  for _, line in ipairs(vim.split(output, "\n")) do
++    local file, row, col, msg = line:match("^(.+):(%d+):(%d+): (.+)$")
++    if file and file ~= "" and not line:match("^%d+ problem") then
++      local abs = vim.fn.fnamemodify(file, ":p")
++      local severity = vim.diagnostic.severity.WARN
++      if msg:match("%[Error") then
++        severity = vim.diagnostic.severity.ERROR
++      end
++      results[abs] = results[abs] or {}
++      table.insert(results[abs], {
++        lnum = tonumber(row) - 1,
++        col = tonumber(col) - 1,
++        severity = severity,
++        message = msg,
++        source = "eslint",
++      })
++    end
++  end
++  return results
++end
++
++--- dart analyze machine: SEVERITY|TYPE|CODE|file|line|col|length|message
++function M.parse_dart(output)
++  local results = {}
++  local sev_map = {
++    ERROR   = vim.diagnostic.severity.ERROR,
++    WARNING = vim.diagnostic.severity.WARN,
++    INFO    = vim.diagnostic.severity.INFO,
++  }
++  for _, line in ipairs(vim.split(output, "\n")) do
++    local sev, _, code, file, row, col, _, msg =
++      line:match("^(%w+)|(%w+)|(%w+)|(.+)|(%d+)|(%d+)|(%d+)|(.+)$")
++    if file then
++      local abs = vim.fn.fnamemodify(file, ":p")
++      results[abs] = results[abs] or {}
++      table.insert(results[abs], {
++        lnum = tonumber(row) - 1,
++        col = tonumber(col) - 1,
++        severity = sev_map[sev] or vim.diagnostic.severity.HINT,
++        message = msg,
++        source = "dart",
++        code = code,
++      })
++    end
++  end
++  return results
++end
++
++--- ng lint prose: ERROR: file:line:col - message
++function M.parse_ng_lint(output)
++  local results = {}
++  for _, line in ipairs(vim.split(output, "\n")) do
++    local sev, file, row, col, msg =
++      line:match("^(%w+): (.+):(%d+):(%d+) %- (.+)$")
++    if file then
++      local abs = vim.fn.fnamemodify(file, ":p")
++      results[abs] = results[abs] or {}
++      table.insert(results[abs], {
++        lnum = tonumber(row) - 1,
++        col = tonumber(col) - 1,
++        severity = sev == "ERROR"
++          and vim.diagnostic.severity.ERROR
++          or vim.diagnostic.severity.WARN,
++        message = msg,
++        source = "ng-lint",
++      })
++    end
++  end
++  return results
++end
++
++--
++-- CORE ENGINE
++--
++
++--- Push parsed results into vim.diagnostic
++local function apply_diagnostics(all_results)
++  -- Wipe previous scanner namespace from all buffers
++  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
++    vim.diagnostic.set(ns, bufnr, {})
++  end
++
++  local counts = { e = 0, w = 0, i = 0 }
++
++  for filename, diags in pairs(all_results) do
++    -- Register the file as a buffer (no content loaded)
++    local bufnr = vim.fn.bufadd(filename)
++
++    -- Inject scanner diagnostics even on loaded buffers (multi-source display)
++    vim.diagnostic.set(ns, bufnr, diags)
++
++    -- Always count for the summary notification
++    for _, d in ipairs(diags) do
++      if d.severity == vim.diagnostic.severity.ERROR then
++        counts.e = counts.e + 1
++      elseif d.severity == vim.diagnostic.severity.WARN then
++        counts.w = counts.w + 1
++      else
++        counts.i = counts.i + 1
++      end
++    end
++  end
++
++  return counts
++end
++
++--- trunk output: file:line:col: message [linter/rule]
++function M.parse_trunk(output)
++  local results = {}
++  for _, line in ipairs(vim.split(output, "\n")) do
++    local file, row, col, msg = line:match("^(.+):(%d+):(%d+): (.+)$")
++    if file then
++      local abs = vim.fn.fnamemodify(file, ":p")
++      results[abs] = results[abs] or {}
++      table.insert(results[abs], {
++        lnum = tonumber(row) - 1,
++        col = tonumber(col) - 1,
++        severity = msg:match("error") and vim.diagnostic.severity.ERROR or vim.diagnostic.severity.WARN,
++        message = msg,
++        source = "trunk",
++      })
++    end
++  end
++  return results
++end
++
++--- Run every detected scanner async and merge results
++function M.scan()
++  if is_scanning then return end
++
++  local scanners = M.detect_scanners()
++  if #scanners == 0 then
++    vim.notify("🔍 No project scanners detected (no tsconfig / eslint / pubspec)", vim.log.levels.INFO)
++    return
++  end
++
++  is_scanning = true
++  local all_results = {}
++  local completed = 0
++  local names = vim.tbl_map(function(s) return s.name end, scanners)
++
++  vim.notify(
++    string.format("🔍 Scanning: %s …", table.concat(names, ", ")),
++    vim.log.levels.INFO
++  )
++
++  for _, scanner in ipairs(scanners) do
++    vim.system(
++      scanner.cmd,
++      { text = true, cwd = vim.fn.getcwd() },
++      function(result)
++        local output = (result.stdout or "") .. (result.stderr or "")
++        local parsed = scanner.parser(output)
++
++        vim.schedule(function()
++          for file, diags in pairs(parsed) do
++            all_results[file] = all_results[file] or {}
++            vim.list_extend(all_results[file], diags)
++          end
++
++          completed = completed + 1
++
++          if completed == #scanners then
++            is_scanning = false
++            local c = apply_diagnostics(all_results)
++            local total = c.e + c.w + c.i
++
++            if total == 0 then
++              vim.notify("✅ No project issues!", vim.log.levels.INFO)
++            else
++              vim.notify(
++                string.format("📋 Project —  %d   %d   %d", c.e, c.w, c.i),
++                vim.log.levels.WARN
++              )
++              -- Auto-open Trouble panel on results
++              vim.cmd("Trouble diagnostics open")
++            end
++          end
++        end)
++      end
++    )
++  end
++end
++
++--- Debounced scan (waits 2s after last save)
++function M.scan_debounced()
++  if scan_timer then scan_timer:stop() end
++  scan_timer = vim.defer_fn(function()
++    M.scan()
++  end, 2000)
++end
++
++--- Initialize autocommands, user commands, and keymaps
++function M.setup()
++  local group = vim.api.nvim_create_augroup("ProjectDiagnostics", { clear = true })
++
++  -- User commands
++  vim.api.nvim_create_user_command("DiagScan", function()
++    M.scan()
++  end, { desc = "Scan project diagnostics" })
++
++  vim.api.nvim_create_user_command("DiagClear", function()
++    if scan_timer then scan_timer:stop() end
++    is_scanning = false
++    for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
++      vim.diagnostic.set(ns, bufnr, {})
++    end
++    vim.notify("🧹 Project diagnostics cleared", vim.log.levels.INFO)
++  end, { desc = "Clear project diagnostics" })
++
++  -- Auto-scan on save (debounced)
++  vim.api.nvim_create_autocmd("BufWritePost", {
++    group = group,
++    pattern = {
++      "*.ts", "*.js", "*.tsx", "*.jsx",
++      "*.html", "*.css", "*.scss",
++      "*.dart", "*.prisma",
++    },
++    callback = function()
++      M.scan_debounced()
++    end,
++    desc = "Auto-scan diagnostics on save",
++  })
++
++  -- Initial scan 3s after Neovim starts (let LSP attach first)
++  vim.api.nvim_create_autocmd("VimEnter", {
++    group = group,
++    once = true,
++    callback = function()
++      vim.defer_fn(function()
++        M.scan()
++      end, 3000)
++    end,
++    desc = "Initial project diagnostics scan",
++  })
++end
++
++return M
+diff --git a/stow/nvim/.config/nvim/lua/configs/lazy.lua b/stow/nvim/.config/nvim/lua/configs/lazy.lua
+new file mode 100644
+index 0000000..cd170bd
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/configs/lazy.lua
+@@ -0,0 +1,47 @@
++return {
++  defaults = { lazy = true },
++  install = { colorscheme = { "nvchad" } },
++
++  ui = {
++    icons = {
++      ft = "",
++      lazy = "󰂠 ",
++      loaded = "",
++      not_loaded = "",
++    },
++  },
++
++  performance = {
++    rtp = {
++      disabled_plugins = {
++        "2html_plugin",
++        "tohtml",
++        "getscript",
++        "getscriptPlugin",
++        "gzip",
++        "logipat",
++        "netrw",
++        "netrwPlugin",
++        "netrwSettings",
++        "netrwFileHandlers",
++        "matchit",
++        "tar",
++        "tarPlugin",
++        "rrhelper",
++        "spellfile_plugin",
++        "vimball",
++        "vimballPlugin",
++        "zip",
++        "zipPlugin",
++        "tutor",
++        "rplugin",
++        "syntax",
++        "synmenu",
++        "optwin",
++        "compiler",
++        "bugreport",
++        "ftplugin",
++      },
++    },
++  },
++}
+diff --git a/stow/nvim/.config/nvim/lua/configs/lspconfig.lua b/stow/nvim/.config/nvim/lua/configs/lspconfig.lua
+new file mode 100644
+index 0000000..0e1f1be
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/configs/lspconfig.lua
+@@ -0,0 +1,49 @@
++-- Configuration globale des diagnostics
++vim.diagnostic.config({
++  virtual_text = {
++    prefix = "●",
++    spacing = 4,
++  },
++  signs = true,
++  underline = true,
++  update_in_insert = true,
++  severity_sort = true,
++})
++
++-- Configuration moderne via vim.lsp.config
++local servers = { "html", "cssls", "angularls", "tailwindcss", "prismals", "dartls" }
++
++for _, name in ipairs(servers) do
++  vim.lsp.config(name, {
++    cmd = { name, "--stdio" }, -- Typo fixed: { name, "--stdio" }
++    root_markers = { "nx.json", "angular.json", "next.config.js", "next.config.mjs", "vite.config.ts", "tsconfig.base.json", "tsconfig.json", ".git", "package.json" },
++  })
++  vim.lsp.enable(name)
++end
++
++-- Configuration de ESLint
++vim.lsp.config("eslint", {
++  settings = {
++    workingDirectories = { mode = "auto" },
++    experimental = { useFlatConfig = true },
++    run = "onSave",
++  },
++  on_attach = function(client, bufnr)
++    vim.api.nvim_create_autocmd("BufWritePre", {
++      buffer = bufnr,
++      command = "EslintFixAll",
++    })
++  end,
++})
++vim.lsp.enable("eslint")
++
++-- Configuration de TypeScript
++vim.lsp.config("ts_ls", {
++  root_markers = { "nx.json", "angular.json", "next.config.js", "next.config.mjs", "vite.config.ts", "tsconfig.base.json", "tsconfig.json", ".git", "package.json" },
++  settings = {
++    typescript = {
++      tsserver = { useSeparateDiagnosticsServer = true },
++    },
++  },
++})
++vim.lsp.enable("ts_ls")
+diff --git a/stow/nvim/.config/nvim/lua/mappings.lua b/stow/nvim/.config/nvim/lua/mappings.lua
+new file mode 100644
+index 0000000..0eec07b
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/mappings.lua
+@@ -0,0 +1,53 @@
++local M = {}
++
++M.general = {
++  n = {
++    -- 1. VS Code: Sidebar/Explorer
++    ["<C-b>"] = { "<cmd>NvimTreeToggle<CR>", "VS Code: Toggle Sidebar" },
++    ["<leader>e"] = { "<cmd>NvimTreeToggle<CR>", "Toggle Explorer" },
++    ["<C-n>"] = { "<cmd>NvimTreeToggle<CR>", "Toggle Explorer" },
++    
++    -- 2. VS Code: Find Files
++    ["<C-p>"] = { "<cmd>Telescope find_files<CR>", "VS Code: Find Files" },
++    
++    -- 3. VS Code: Search in Project
++    ["<C-f>"] = { "<cmd>Telescope live_grep<CR>", "VS Code: Global Search" },
++    ["<C-S-f>"] = { "<cmd>Telescope live_grep<CR>", "VS Code: Global Search" },
++    
++    -- 4. VS Code: Command Palette
++    ["<C-S-p>"] = { "<cmd>Telescope commands<CR>", "VS Code Palette" },
++    ["<leader>cp"] = { "<cmd>Telescope commands<CR>", "Command Palette" },
++    
++    -- 5. VS Code: Save
++    ["<C-s>"] = { "<cmd>w<CR>", "VS Code: Save" },
++    
++    -- 6. VS Code: Problems Panel
++    ["<C-j>"] = { "<cmd>Trouble diagnostics toggle<CR>", "VS Code: Problems" },
++    
++    -- 7. VS Code: Close Tab
++    ["<C-w>"] = {
++      function()
++        require("nvchad.tabufline").close_buffer()
++      end,
++      "VS Code: Close Tab",
++    },
++
++    -- 8. VS Code: Format Code (Shift+Alt+F)
++    ["<A-S-f>"] = {
++      function()
++        require("conform").format { lsp_fallback = true }
++      end,
++      "VS Code: Format Code",
++    },
++  },
++
++  i = {
++    ["<C-s>"] = { "<cmd>w<CR><ESC>", "VS Code: Save" },
++  },
++
++  v = {
++    ["<C-c>"] = { '"+y', "VS Code: Copy to clipboard" },
++  },
++}
++
++return M
+diff --git a/stow/nvim/.config/nvim/lua/options.lua b/stow/nvim/.config/nvim/lua/options.lua
+new file mode 100644
+index 0000000..f150a2e
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/options.lua
+@@ -0,0 +1,24 @@
++require "nvchad.options"
++
++local o = vim.o
++
++-- System clipboard integration (essential for standard Copy/Paste)
++o.clipboard = "unnamedplus"
++
++-- Enable mouse support everywhere
++o.mouse = "a"
++
++-- Smooth scrolling margin (keeps context above/below cursor)
++o.scrolloff = 8
++
++-- Faster update time for better responsiveness
++o.updatetime = 250
++
++-- Disable swap files to avoid E325 error
++vim.opt.swapfile = false
++vim.opt.backup = false
++vim.opt.writebackup = false
++
++-- Sauvegarde automatique quand on change de buffer ou qu'on perd le focus
++vim.opt.autowrite = true
++vim.opt.autowriteall = true
+diff --git a/stow/nvim/.config/nvim/lua/plugins/dev_env.lua b/stow/nvim/.config/nvim/lua/plugins/dev_env.lua
+new file mode 100644
+index 0000000..2703dbe
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/plugins/dev_env.lua
+@@ -0,0 +1,21 @@
++return {
++  -- Git : Statut et Graphe
++  {
++    "lewis6991/gitsigns.nvim",
++    event = "User FilePost",
++    opts = {},
++  },
++  {
++    "sindrets/diffview.nvim",
++    cmd = { "DiffviewOpen", "DiffviewFileHistory" }
++  },
++
++  -- Auto-completion & Auto-import (Integrated in NvChad)
++  {
++    "hrsh7th/nvim-cmp",
++    event = "InsertEnter",
++    opts = function()
++      return require "nvchad.configs.cmp"
++    end,
++  }
++}
+diff --git a/stow/nvim/.config/nvim/lua/plugins/init.lua b/stow/nvim/.config/nvim/lua/plugins/init.lua
+new file mode 100644
+index 0000000..6564d9f
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/plugins/init.lua
+@@ -0,0 +1,90 @@
++return {
++  { "rcarriga/nvim-notify", config = function() vim.notify = require("notify") end },
++  -- Noice for UI and centralized Commands
++  {
++    "folke/noice.nvim",
++    event = "VeryLazy",
++    opts = {
++      lsp = {
++        override = {
++          ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
++          ["vim.lsp.util.stylize_markdown"] = true,
++          ["cmp.entry.get_documentation"] = true,
++        },
++      },
++      presets = {
++        bottom_search = false,
++        command_palette = true,
++        long_message_to_split = true,
++      },
++    },
++    dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify" },
++  },
++  -- LSP Principal (Tout est ici maintenant)
++  {
++    "neovim/nvim-lspconfig",
++    config = function()
++      require "configs.lspconfig"
++    end,
++  },
++
++  -- Treesitter pour les couleurs
++  {
++    "nvim-treesitter/nvim-treesitter",
++    opts = {
++      ensure_installed = { "html", "css", "typescript", "angular", "lua", "prisma", "dart", "json", "scss" },
++      highlight = { enable = true },
++    },
++  },
++
++  -- Vos outils VS Code
++  { "nvim-telescope/telescope.nvim", cmd = "Telescope" },
++  {
++    "folke/trouble.nvim",
++    cmd = "Trouble",
++    opts = {
++      auto_refresh = true,
++      focus = false,
++      modes = {
++        diagnostics = {
++          auto_open = false,
++          auto_refresh = true,
++          focus = false,
++          win = { position = "bottom", size = { height = 12 } },
++        },
++      },
++      icons = {
++        indent = {
++          fold_open = " ",
++          fold_closed = " ",
++        },
++      },
++    },
++    keys = {
++      { "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", desc = "Workspace Diagnostics" },
++      { "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", desc = "Buffer Diagnostics" },
++      { "<leader>cs", "<cmd>Trouble symbols toggle focus=false<cr>", desc = "Symbols" },
++      { "<leader>cl", "<cmd>Trouble lsp toggle focus=false win.position=right<cr>", desc = "LSP References" },
++      { "<leader>xL", "<cmd>Trouble loclist toggle<cr>", desc = "Location List" },
++      { "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", desc = "Quickfix List" },
++    },
++  },
++  { "nvim-tree/nvim-tree.lua", 
++    opts = {
++      view = {
++        adaptive_size = true,
++      },
++      filters = {
++        dotfiles = false,
++        git_ignored = false,
++        custom = { ".git" },
++      },
++    } 
++  },
++  { "stevearc/conform.nvim", event = "BufWritePre", opts = require "configs.conform" },
++  { "lewis6991/gitsigns.nvim", event = "User FilePost", opts = {} },
++  { "kdheepak/lazygit.nvim", cmd = { "LazyGit", "LazyGitConfig", "LazyGitCurrentFile", "LazyGitFilter", "LazyGitFilterCurrentFile" }, dependencies = { "nvim-lua/plenary.nvim" } },
++  { "mgierada/lazydocker.nvim", dependencies = { "akinsho/toggleterm.nvim" }, config = function() require("lazydocker").setup({}) end },
++  { "trunk-io/neovim-trunk", dependencies = { "nvim-telescope/telescope.nvim" }, config = function() require("trunk").setup({ formatOnSave = true }) end },
++  { "sindrets/diffview.nvim", cmd = { "DiffviewOpen", "DiffviewFileHistory" } },
++}
+diff --git a/stow/nvim/.config/nvim/lua/plugins/syntax.lua b/stow/nvim/.config/nvim/lua/plugins/syntax.lua
+new file mode 100644
+index 0000000..89d4b9b
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/plugins/syntax.lua
+@@ -0,0 +1,10 @@
++return {
++  {
++    "prisma/vim-prisma",
++    ft = "prisma",
++  },
++  {
++    "jparise/vim-graphql",
++    ft = { "graphql", "typescriptreact", "javascriptreact" },
++  },
++}
+diff --git a/stow/nvim/.config/nvim/lua/plugins/ui_ux.lua b/stow/nvim/.config/nvim/lua/plugins/ui_ux.lua
+new file mode 100644
+index 0000000..da19cb7
+--- /dev/null
++++ b/stow/nvim/.config/nvim/lua/plugins/ui_ux.lua
+@@ -0,0 +1,63 @@
++return {
++  -- Coloration (Treesitter)
++  {
++    "nvim-treesitter/nvim-treesitter",
++    event = { "BufReadPost", "BufNewFile" },
++    build = ":TSUpdate",
++    init = function() require("nvim-treesitter.install").prefer_git = false end,
++    opts = {
++      ensure_installed = { "html", "css", "typescript", "angular", "lua", "prisma", "dart", "json", "scss", "javascript" },
++      auto_install = true,
++      highlight = { enable = true },
++      indent = { enable = true },
++    },
++    config = function(_, opts)
++      local status, ts_configs = pcall(require, "nvim-treesitter.configs")
++      if status then ts_configs.setup(opts) end
++    end,
++  },
++
++  -- Panneau "Problems" comme VS Code
++  {
++    "folke/trouble.nvim",
++    cmd = "Trouble",
++    opts = {},
++  },
++
++  -- Formattage (Prettier)
++  {
++    "stevearc/conform.nvim",
++    event = "BufWritePre",
++    opts = {
++      formatters_by_ft = {
++        javascript = { "prettierd" },
++        typescript = { "prettierd" },
++        angular = { "prettierd" },
++        html = { "prettierd" },
++        css = { "prettierd" },
++        prisma = { "prettierd" },
++      },
++      format_on_save = { timeout_ms = 500, lsp_fallback = true },
++    },
++  },
++
++  -- Recherche Telescope
++  {
++    "nvim-telescope/telescope.nvim",
++    opts = {
++      defaults = {
++        vimgrep_arguments = { "rg", "--color=never", "--no-heading", "--with-filename", "--line-number", "--column", "--smart-case", "--hidden" },
++      },
++      pickers = {
++        find_files = {
++          hidden = true,
++        },
++        live_grep = {
++          additional_args = function(opts)
++            return { "--hidden" }
++          end,
++        },
++      },
++    },
++  }
++}
+diff --git a/stow/trunk/.config/trunk/markdownlint.yaml b/stow/trunk/.config/trunk/markdownlint.yaml
+new file mode 100644
+index 0000000..de30b75
+--- /dev/null
++++ b/stow/trunk/.config/trunk/markdownlint.yaml
+@@ -0,0 +1,4 @@
++# Markdownlint config — suppress low-severity stylistic rules
++# Copy this to your project root as .markdownlint.yaml
++
++default: false
+diff --git a/stow/trunk/.config/trunk/trunk-template-ts-dart.yaml b/stow/trunk/.config/trunk/trunk-template-ts-dart.yaml
+new file mode 100644
+index 0000000..f49a88b
+--- /dev/null
++++ b/stow/trunk/.config/trunk/trunk-template-ts-dart.yaml
+@@ -0,0 +1,50 @@
++# Global Trunk template — TypeScript & Dart only
++# Copy this to your project's .trunk/trunk.yaml
++version: 0.1
++cli:
++  version: 1.25.0
++
++plugins:
++  sources:
++    - id: trunk
++      ref: v1.10.2
++      uri: https://github.com/trunk-io/plugins
++
++# Only Node runtime (for TypeScript/JS)
++runtimes:
++  enabled:
++    - node@22.16.0
++
++lint:
++  enabled:
++    - prettier@3.8.3       # TS/JS/JSON/CSS formatter
++    - eslint@8.57.1        # TypeScript linter
++    - git-diff-check       # Git whitespace checks
++    - markdownlint
++    - dart@3.8.1           # Dart/Flutter analyzer & formatter
++  disabled:
++    - actionlint
++    - bandit
++    - black
++    - checkov
++    - dotenv-linter
++    - grype
++    - go
++    - hadolint
++    - isort
++    - osv-scanner
++    - pinact
++    - python
++    - ruff
++    - shellcheck
++    - shfmt
++    - taplo
++    - trufflehog
++    - yamllint
++
++actions:
++  enabled:
++    - trunk-announce
++    - trunk-check-pre-push
++    - trunk-fmt-pre-commit
++    - trunk-upgrade-available
+diff --git a/stow/zsh-optional/.angular_aliases.zsh b/stow/zsh-optional/.angular_aliases.zsh
+new file mode 100644
+index 0000000..5be9193
+--- /dev/null
++++ b/stow/zsh-optional/.angular_aliases.zsh
+@@ -0,0 +1,81 @@
++# ==============================================================================
++# 🅰️ ANGULAR & NX ALIASES
++# ==============================================================================
++if command -v nx >/dev/null 2>&1 || command -v ng >/dev/null 2>&1 || command -v bunx >/dev/null 2>&1; then
++alias nx="bunx nx"
++alias ngs="bunx nx serve"
++alias ngb="bunx nx build"
++alias ngt="bunx nx test"
++alias ngl="bunx nx lint"
++alias ngc="bunx nx g @nx/angular:component"
++alias ngs-all="bunx nx run-many --target=serve --all --parallel"
++alias ngg="bunx nx g"
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 6. NX MONOREPO 🐬
++# ══════════════════════════════════════════════════════════════════════════════
++
++# Run
++alias nxsa='br start:all'
++alias nxpgl='br prisma:generate:local'
++alias nxpmd='br prisma:migrate:deploy'
++alias nxpstu='br prisma:studio'
++alias nxba='br build:all'
++
++# Generators
++alias nxgc='bunx nx g @nx/angular:component'
++alias nxgs='bunx nx g @nx/angular:service'
++alias nxgp='bunx nx g @nx/angular:pipe'
++alias nxgd='bunx nx g @nx/angular:directive'
++alias nxgm='bunx nx g @nx/angular:module'
++alias nxgr='bunx nx g @nx/angular:resolver'
++
++# NX Functions
++nx-new-api() { bunx nx g @nx/nest:application --name=${1:-api} --directory=apps/${1:-api} --unitTestRunner=none --linter=eslint; }
++nx-new-lib() { bunx nx g @nx/nest:lib libs/$1; }
++nx-gen-feat() {
++  bunx nx g @nx/js:library $1 \
++    --directory=libs/backend/features/$1 \
++    --bundler=none --minimal --unitTestRunner=none \
++    --importPath=@dimanew/backend/$1 --linter=none
++}
++nx-affected() { bunx nx affected --target=${1:-build} --base=origin/main; }
++nx-dep() { bunx nx show project $1 --web; }  # see project dependencies
++
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 7. ANGULAR 🦁  (Angular CLI — ng)
++# ══════════════════════════════════════════════════════════════════════════════
++# Dev
++alias ngs-prod='ng serve --configuration=production'
++alias ngb-prod='ng build --configuration=production'
++alias ngtw='ng test --watch'
++alias nge2e='ng e2e'
++
++# Generators (ng generate)
++alias nggc='ng g component'
++alias nggs='ng g service'
++alias nggp='ng g pipe'
++alias nggd='ng g directive'
++alias nggm='ng g module'
++alias nggr='ng g resolver'
++alias nggg='ng g guard'
++alias nggi='ng g interceptor'
++alias nggen='ng g enum'
++alias nggcl='ng g class'
++alias nggif='ng g interface'
++
++# Generators avec options Angular moderne (standalone + scss + OnPush)
++nggnew() {
++  local name=$1
++  local path=${2:-.}
++  ng g component $path/$name --standalone --style=scss --change-detection=OnPush
++  echo "✅ Component ✅ Component '$name' generated in generated in $path"
++}
++
++# Angular update
++alias ng-update='ng update @angular/core @angular/cli'
++alias ng-update-all='ng update'
++alias ng-version='ng version'
++alias ng-doc='ng doc'                 # open Angular doc
++fi
+diff --git a/stow/zsh-optional/.docker_aliases.zsh b/stow/zsh-optional/.docker_aliases.zsh
+new file mode 100644
+index 0000000..cfd7a25
+--- /dev/null
++++ b/stow/zsh-optional/.docker_aliases.zsh
+@@ -0,0 +1,35 @@
++# ==============================================================================
++# 🐳 DOCKER PRO ALIASES
++# ==============================================================================
++alias dup="docker compose up -d"
++alias ddown="docker compose down"
++alias dbuild="docker compose build"
++# alias dlogs="docker compose logs -f" # Commenté car conflit avec la fonction dlogs() ligne 34
++alias dps="docker ps"
++alias dima="cd ~/Projects/Angular/dima-new"
++alias dima-up="docker compose --env-file .env.docker up -d --build"
++alias dima-down="docker compose --env-file .env.docker down"
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 3. DOCKER 🐋 (migrated from zsh_aliases)
++# ══════════════════════════════════════════════════════════════════════════════
++if command -v docker >/dev/null 2>&1; then
++alias d='docker'
++alias dc='docker compose'
++alias dcu='docker compose up -d'
++alias dcd='docker compose down'
++alias dcr='docker compose restart'
++alias dcl='docker compose logs -f'
++alias dcp='docker compose pull'
++alias dcb='docker compose up -d --build'
++
++alias dpsa='docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
++alias di='docker images'
++alias dprune='docker system prune -af --volumes && echo "🧹 Docker cleaned"'
++alias dstats='docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"'
++
++# Enter a container
++dsh() { docker exec -it $1 /bin/sh; }
++dbash() { docker exec -it $1 /bin/bash; }
++dlogs() { docker logs -f --tail=100 $1; }
++fi
+diff --git a/stow/zsh-optional/.flutter_aliases.zsh b/stow/zsh-optional/.flutter_aliases.zsh
+new file mode 100644
+index 0000000..2950207
+--- /dev/null
++++ b/stow/zsh-optional/.flutter_aliases.zsh
+@@ -0,0 +1,46 @@
++# ==============================================================================
++# 10. FLUTTER 💙
++# ==============================================================================
++if command -v flutter >/dev/null 2>&1; then
++alias f='flutter'
++alias fr='flutter run'
++alias frd='flutter run --debug'
++alias frr='flutter run --release'
++alias frp='flutter run --profile'
++alias frl='flutter run -d linux'
++alias frw='flutter run -d web-server --web-port 4200'
++alias frc='flutter run -d chrome'
++
++alias fpg='flutter pub get'
++alias fpu='flutter pub upgrade --major-versions'
++alias fpa='flutter pub add'
++alias fprm='flutter pub remove'
++alias fpout='flutter pub outdated'
++
++alias fc='flutter clean && flutter pub get'
++alias fbr='flutter pub run build_runner build'
++alias fbrd='flutter pub run build_runner build --delete-conflicting-outputs'
++alias fbrw='flutter pub run build_runner watch --delete-conflicting-outputs'
++alias fgen='dart run build_runner build --delete-conflicting-outputs'  # Dart 3+
++alias fgenw='dart run build_runner watch --delete-conflicting-outputs'
++
++alias fa='flutter analyze'
++alias ft='flutter test'
++alias ftc='flutter test --coverage'
++alias fdoc='flutter doctor -v'
++alias fdev='flutter devices'
++alias femu='flutter emulators --launch'
++
++# Build
++alias fb-apk='flutter build apk --release'
++alias fb-aab='flutter build appbundle --release'
++alias fb-ios='flutter build ios --release'
++alias fb-web='flutter build web --release'
++alias fb-linux='flutter build linux --release'
++
++# Common fix
++alias ffix='flutter clean && flutter pub get && flutter pub run build_runner build --delete-conflicting-outputs'
++
++# Create a clean Flutter project
++fnew() { flutter create --org com.${2:-$USER} --template=app $1 && cd $1 && flutter pub get; }
++fi
+diff --git a/stow/zsh-optional/.git_aliases.zsh b/stow/zsh-optional/.git_aliases.zsh
+new file mode 100644
+index 0000000..0f9af36
+--- /dev/null
++++ b/stow/zsh-optional/.git_aliases.zsh
+@@ -0,0 +1,114 @@
++# ==============================================================================
++# GIT 🐙 & GITHUB CLI (gh) 🐈‍⬛ ALIASES
++# ==============================================================================
++
++if command -v git >/dev/null 2>&1; then
++alias gs='git status'
++alias ga='git add .'
++alias gaa='git add -A'
++alias gai='git add -i'                # interactive add
++alias gc='git commit'
++alias gcm='git commit -m'
++alias gcam='git add . && git commit -m'
++alias gca='git commit --amend --no-edit'
++alias gcae='git commit --amend'
++alias gp='git push'
++alias gpf='git push --force-with-lease' # SAFE force push
++alias gpo='git push -u origin HEAD'  # push new branch
++alias gl='git pull'
++alias glr='git pull --rebase'
++alias gf='git fetch --all --prune'
++
++alias glog="git log --oneline --graph --decorate --color"
++alias gloga="git log --oneline --graph --decorate --all --color"
++alias glogp='git log --pretty=format:"%C(yellow)%h%Creset %C(blue)%an%Creset %C(green)%ar%Creset %s"'
++
++alias gb='git branch'
++alias gba='git branch -a'
++alias gbd='git branch -d'
++alias gbD='git branch -D'
++alias gbm='git branch -m'            # rename branch
++alias gsw='git switch'
++alias gswc='git switch -c'           # create + switch
++alias gco='git checkout'
++alias gcob='git checkout -b'
++
++alias gst='git stash'
++alias gstp='git stash pop'
++alias gstl='git stash list'
++alias gstd='git stash drop'
++alias gsta='git stash apply'
++
++alias grb='git rebase'
++alias grbi='git rebase -i'           # interactive rebase
++alias grbc='git rebase --continue'
++alias grba='git rebase --abort'
++
++alias gd='git diff'
++alias gds='git diff --staged'
++alias gdw='git diff --word-diff'
++
++alias grs='git restore'
++alias grss='git restore --staged'    # unstage a file
++alias grsh='git reset --hard HEAD'   # DANGER: discard all
++alias grss1='git reset --soft HEAD~1' # undo last commit (keep changes)
++
++alias gtag='git tag'
++alias gtagp='git push origin --tags'
++
++alias gwt='git worktree'
++alias gwta='git worktree add'
++alias gwtb='git worktree add -b'
++alias gwtl='git worktree list'
++alias gwtr='git worktree remove'
++
++# Automated worktree workflow script (Task #11)
++alias gwt-auto='echo "🌿 Git Worktree Auto..." && bash ~/dotfiles/scripts/git-worktree-auto.sh'
++alias gwt-new='bash ~/dotfiles/scripts/git-worktree-auto.sh create'
++alias gwt-list='bash ~/dotfiles/scripts/git-worktree-auto.sh list'
++alias gwt-rm='bash ~/dotfiles/scripts/git-worktree-auto.sh remove'
++alias gwt-pr='bash ~/dotfiles/scripts/git-worktree-auto.sh pr-flow'
++alias gwt-clean='bash ~/dotfiles/scripts/git-worktree-auto.sh cleanup'
++
++# Find who wrote what
++gwho() { git log --follow -p -- $1; }
++galias() { git config --get-regexp alias; }
++
++# Sync fork with upstream
++upstream-sync() {
++  local main_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
++  main_branch=${main_branch:-main}
++  echo "🔄 Sync with upstream/$main_branch..."
++  git checkout $main_branch && git fetch upstream && git merge upstream/$main_branch --ff-only && git push origin $main_branch
++  echo "✅ Fork synchronized!"
++}
++
++# Quick create PR
++gpr() {
++  git add . && git commit -m "${1:-wip}" && git push -u origin HEAD
++  echo "🔗 Open GitHub to create your PR!"
++  gh pr create --fill 2>/dev/null || echo "💡 Install gh CLI to auto-create the PR"
++}
++
++# Clean merged branches
++gbclean() {
++  git fetch --all --prune
++  git branch --merged | grep -v '\*\|main\|master\|develop' | xargs -r git branch -d
++  echo "🧹 Merged branches deleted"
++}
++fi
++
++# ------------------------------------------------------------------------------
++# GITHUB CLI (gh) 🐈‍⬛
++# ------------------------------------------------------------------------------
++if command -v gh >/dev/null 2>&1; then
++alias ghpc='gh pr create --fill'
++alias ghpl='gh pr list'
++alias ghps='gh pr status'
++alias ghpm='gh pr merge --merge --delete-branch'
++alias ghpm-squash='gh pr merge --squash --delete-branch'
++alias ghpm-rebase='gh pr merge --rebase --delete-branch'
++alias ghv='gh repo view --web'
++alias ghw='gh run watch'
++alias ghr='gh run list'
++fi
+diff --git a/stow/zsh-optional/.nestjs_prisma_aliases.zsh b/stow/zsh-optional/.nestjs_prisma_aliases.zsh
+new file mode 100644
+index 0000000..46105ba
+--- /dev/null
++++ b/stow/zsh-optional/.nestjs_prisma_aliases.zsh
+@@ -0,0 +1,36 @@
++# ==============================================================================
++# NESTJS 🐦 & PRISMA 🗄️ ALIASES
++# ==============================================================================
++
++if command -v pnpm >/dev/null 2>&1; then
++# NESTJS 🐦
++alias ns='pnpm start'
++alias nsd='pnpm start:dev'
++alias nsb='pnpm start:debug'
++alias nsp='pnpm start:prod'
++
++alias nsgm='pnpm nest g module'
++alias nsgs='pnpm nest g service'
++alias nsgc='pnpm nest g controller'
++alias nsgg='pnpm nest g guard'
++alias nsgp='pnpm nest g pipe'
++alias nsgd='pnpm nest g decorator'
++alias nsgmi='pnpm nest g middleware'
++alias nsgint='pnpm nest g interceptor'
++
++
++# PRISMA 🗄️
++alias pgenx='pnpm exec dotenv -e .env -- prisma generate'
++alias pmig='pnpm exec dotenv -e .env -- prisma migrate dev'
++alias pmig-prod='pnpm exec dotenv -e .env -- prisma migrate deploy'
++alias pstu='pnpm prisma studio'
++alias pgen='pnpm prisma generate'
++alias pdbpsh='pnpm prisma db push'
++alias pdbpull='pnpm prisma db pull'
++
++alias pseed='pnpm exec dotenv -e .env -- prisma db seed'
++alias pcheck='pnpm prisma migrate status'
++
++# Create a migration without applying it
++pmig-create() { pnpm exec dotenv -e .env -- prisma migrate dev --name ${1:-migration} --create-only; }
++fi
+diff --git a/stow/zsh/.p10k.zsh b/stow/zsh/.p10k.zsh
+new file mode 100644
+index 0000000..f8df886
+--- /dev/null
++++ b/stow/zsh/.p10k.zsh
+@@ -0,0 +1,1745 @@
++# Generated by Powerlevel10k configuration wizard on 2025-12-30 at 14:31 EAT.
++# Based on romkatv/powerlevel10k/config/p10k-classic.zsh, checksum 13396.
++# Wizard options: nerdfont-v3 + powerline, small icons, classic, unicode, darkest,
++# 24h time, vertical separators, slanted heads, round tails, 2 lines, dotted,
++# left frame, compact, many icons, fluent, transient_prompt, instant_prompt=verbose.
++# Type `p10k configure` to generate another config.
++#
++# Config for Powerlevel10k with classic powerline prompt style. Type `p10k configure` to generate
++# your own config based on it.
++#
++# Tip: Looking for a nice color? Here's a one-liner to print colormap.
++#
++#   for i in {0..255}; do print -Pn "%K{$i}  %k%F{$i}${(l:3::0:)i}%f " ${${(M)$((i%6)):#3}:+$'\n'}; done
++
++# Temporarily change options.
++'builtin' 'local' '-a' 'p10k_config_opts'
++[[ ! -o 'aliases'         ]] || p10k_config_opts+=('aliases')
++[[ ! -o 'sh_glob'         ]] || p10k_config_opts+=('sh_glob')
++[[ ! -o 'no_brace_expand' ]] || p10k_config_opts+=('no_brace_expand')
++'builtin' 'setopt' 'no_aliases' 'no_sh_glob' 'brace_expand'
++
++() {
++  emulate -L zsh -o extended_glob
++
++  # Unset all configuration options. This allows you to apply configuration changes without
++  # restarting zsh. Edit ~/.p10k.zsh and type `source ~/.p10k.zsh`.
++  unset -m '(POWERLEVEL9K_*|DEFAULT_USER)~POWERLEVEL9K_GITSTATUS_DIR'
++
++  # Zsh >= 5.1 is required.
++  [[ $ZSH_VERSION == (5.<1->*|<6->.*) ]] || return
++
++  # The list of segments shown on the left. Fill it with the most important segments.
++  typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
++    # =========================[ Line #1 ]=========================
++    os_icon                 # os identifier
++    dir                     # current directory
++    vcs                     # git status
++    # =========================[ Line #2 ]=========================
++    newline                 # \n
++    # prompt_char           # prompt symbol
++  )
++
++  # The list of segments shown on the right. Fill it with less important segments.
++  # Right prompt on the last prompt line (where you are typing your commands) gets
++  # automatically hidden when the input line reaches it. Right prompt above the
++  # last prompt line gets hidden if it would overlap with left prompt.
++  typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(
++    # =========================[ Line #1 ]=========================
++    status                  # exit code of the last command
++    command_execution_time  # duration of the last command
++    background_jobs         # presence of background jobs
++    direnv                  # direnv status (https://direnv.net/)
++    asdf                    # asdf version manager (https://github.com/asdf-vm/asdf)
++    virtualenv              # python virtual environment (https://docs.python.org/3/library/venv.html)
++    anaconda                # conda environment (https://conda.io/)
++    pyenv                   # python environment (https://github.com/pyenv/pyenv)
++    goenv                   # go environment (https://github.com/syndbg/goenv)
++    nodenv                  # node.js version from nodenv (https://github.com/nodenv/nodenv)
++    nvm                     # node.js version from nvm (https://github.com/nvm-sh/nvm)
++    nodeenv                 # node.js environment (https://github.com/ekalinin/nodeenv)
++    # node_version          # node.js version
++    # go_version            # go version (https://golang.org)
++    # rust_version          # rustc version (https://www.rust-lang.org)
++    # dotnet_version        # .NET version (https://dotnet.microsoft.com)
++    # php_version           # php version (https://www.php.net/)
++    # laravel_version       # laravel php framework version (https://laravel.com/)
++    # java_version          # java version (https://www.java.com/)
++    # package               # name@version from package.json (https://docs.npmjs.com/files/package.json)
++    rbenv                   # ruby version from rbenv (https://github.com/rbenv/rbenv)
++    rvm                     # ruby version from rvm (https://rvm.io)
++    fvm                     # flutter version management (https://github.com/leoafarias/fvm)
++    luaenv                  # lua version from luaenv (https://github.com/cehoffman/luaenv)
++    jenv                    # java version from jenv (https://github.com/jenv/jenv)
++    plenv                   # perl version from plenv (https://github.com/tokuhirom/plenv)
++    perlbrew                # perl version from perlbrew (https://github.com/gugod/App-perlbrew)
++    phpenv                  # php version from phpenv (https://github.com/phpenv/phpenv)
++    scalaenv                # scala version from scalaenv (https://github.com/scalaenv/scalaenv)
++    haskell_stack           # haskell version from stack (https://haskellstack.org/)
++    kubecontext             # current kubernetes context (https://kubernetes.io/)
++    terraform               # terraform workspace (https://www.terraform.io)
++    # terraform_version     # terraform version (https://www.terraform.io)
++    aws                     # aws profile (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html)
++    aws_eb_env              # aws elastic beanstalk environment (https://aws.amazon.com/elasticbeanstalk/)
++    azure                   # azure account name (https://docs.microsoft.com/en-us/cli/azure)
++    gcloud                  # google cloud cli account and project (https://cloud.google.com/)
++    google_app_cred         # google application credentials (https://cloud.google.com/docs/authentication/production)
++    toolbox                 # toolbox name (https://github.com/containers/toolbox)
++    context                 # user@hostname
++    nordvpn                 # nordvpn connection status, linux only (https://nordvpn.com/)
++    ranger                  # ranger shell (https://github.com/ranger/ranger)
++    yazi                    # yazi shell (https://github.com/sxyazi/yazi)
++    nnn                     # nnn shell (https://github.com/jarun/nnn)
++    lf                      # lf shell (https://github.com/gokcehan/lf)
++    xplr                    # xplr shell (https://github.com/sayanarijit/xplr)
++    vim_shell               # vim shell indicator (:sh)
++    midnight_commander      # midnight commander shell (https://midnight-commander.org/)
++    nix_shell               # nix shell (https://nixos.org/nixos/nix-pills/developing-with-nix-shell.html)
++    chezmoi_shell           # chezmoi shell (https://www.chezmoi.io/)
++    vi_mode                 # vi mode (you don't need this if you've enabled prompt_char)
++    # vpn_ip                # virtual private network indicator
++    # load                  # CPU load
++    # disk_usage            # disk usage
++    # ram                   # free RAM
++    # swap                  # used swap
++    todo                    # todo items (https://github.com/todotxt/todo.txt-cli)
++    timewarrior             # timewarrior tracking status (https://timewarrior.net/)
++    taskwarrior             # taskwarrior task count (https://taskwarrior.org/)
++    per_directory_history   # Oh My Zsh per-directory-history local/global indicator
++    # cpu_arch              # CPU architecture
++    time                    # current time
++    # =========================[ Line #2 ]=========================
++    newline                 # \n
++    # ip                    # ip address and bandwidth usage for a specified network interface
++    # public_ip             # public IP address
++    # proxy                 # system-wide http/https/ftp proxy
++    # battery               # internal battery
++    # wifi                  # wifi speed
++    # example               # example user-defined segment (see prompt_example function below)
++  )
++
++  # Defines character set used by powerlevel10k. It's best to let `p10k configure` set it for you.
++  typeset -g POWERLEVEL9K_MODE=nerdfont-v3
++  # When set to `moderate`, some icons will have an extra space after them. This is meant to avoid
++  # icon overlap when using non-monospace fonts. When set to `none`, spaces are not added.
++  typeset -g POWERLEVEL9K_ICON_PADDING=none
++
++  # When set to true, icons appear before content on both sides of the prompt. When set
++  # to false, icons go after content. If empty or not set, icons go before content in the left
++  # prompt and after content in the right prompt.
++  #
++  # You can also override it for a specific segment:
++  #
++  #   POWERLEVEL9K_STATUS_ICON_BEFORE_CONTENT=false
++  #
++  # Or for a specific segment in specific state:
++  #
++  #   POWERLEVEL9K_DIR_NOT_WRITABLE_ICON_BEFORE_CONTENT=false
++  typeset -g POWERLEVEL9K_ICON_BEFORE_CONTENT=
++
++  # Add an empty line before each prompt.
++  typeset -g POWERLEVEL9K_PROMPT_ADD_NEWLINE=false
++
++  # Connect left prompt lines with these symbols. You'll probably want to use the same color
++  # as POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_FOREGROUND below.
++  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX='%238F╭─'
++  typeset -g POWERLEVEL9K_MULTILINE_NEWLINE_PROMPT_PREFIX='%238F├─'
++  typeset -g POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX='%238F╰─'
++  # Connect right prompt lines with these symbols.
++  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_SUFFIX=
++  typeset -g POWERLEVEL9K_MULTILINE_NEWLINE_PROMPT_SUFFIX=
++  typeset -g POWERLEVEL9K_MULTILINE_LAST_PROMPT_SUFFIX=
++
++  # Filler between left and right prompt on the first prompt line. You can set it to ' ', '·' or
++  # '─'. The last two make it easier to see the alignment between left and right prompt and to
++  # separate prompt from command output. You might want to set POWERLEVEL9K_PROMPT_ADD_NEWLINE=false
++  # for more compact prompt if using this option.
++  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_CHAR='·'
++  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_BACKGROUND=
++  typeset -g POWERLEVEL9K_MULTILINE_NEWLINE_PROMPT_GAP_BACKGROUND=
++  if [[ $POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_CHAR != ' ' ]]; then
++    # The color of the filler. You'll probably want to match the color of POWERLEVEL9K_MULTILINE
++    # ornaments defined above.
++    typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_FOREGROUND=238
++    # Start filler from the edge of the screen if there are no left segments on the first line.
++    typeset -g POWERLEVEL9K_EMPTY_LINE_LEFT_PROMPT_FIRST_SEGMENT_END_SYMBOL='%{%}'
++    # End filler on the edge of the screen if there are no right segments on the first line.
++    typeset -g POWERLEVEL9K_EMPTY_LINE_RIGHT_PROMPT_FIRST_SEGMENT_START_SYMBOL='%{%}'
++  fi
++
++  # Default background color.
++  typeset -g POWERLEVEL9K_BACKGROUND=234
++
++  # Separator between same-color segments on the left.
++  typeset -g POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR='%242F\u2502'
++  # Separator between same-color segments on the right.
++  typeset -g POWERLEVEL9K_RIGHT_SUBSEGMENT_SEPARATOR='%242F\u2502'
++  # Separator between different-color segments on the left.
++  typeset -g POWERLEVEL9K_LEFT_SEGMENT_SEPARATOR=''
++  # Separator between different-color segments on the right.
++  typeset -g POWERLEVEL9K_RIGHT_SEGMENT_SEPARATOR=''
++  # To remove a separator between two segments, add "_joined" to the second segment name.
++  # For example: POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(os_icon context_joined)
++
++  # The right end of left prompt.
++  typeset -g POWERLEVEL9K_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL='\uE0BC'
++  # The left end of right prompt.
++  typeset -g POWERLEVEL9K_RIGHT_PROMPT_FIRST_SEGMENT_START_SYMBOL='\uE0BA'
++  # The left end of left prompt.
++  typeset -g POWERLEVEL9K_LEFT_PROMPT_FIRST_SEGMENT_START_SYMBOL='\uE0B6'
++  # The right end of right prompt.
++  typeset -g POWERLEVEL9K_RIGHT_PROMPT_LAST_SEGMENT_END_SYMBOL='\uE0B4'
++  # Left prompt terminator for lines without any segments.
++  typeset -g POWERLEVEL9K_EMPTY_LINE_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL=
++
++  #################################[ os_icon: os identifier ]##################################
++  # OS identifier color.
++  typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND=255
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION='⭐'
++
++  ################################[ prompt_char: prompt symbol ]################################
++  # Transparent background.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_BACKGROUND=
++  # Green prompt symbol if the last command succeeded.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=76
++  # Red prompt symbol if the last command failed.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=196
++  # Default prompt symbol.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='❯'
++  # Prompt symbol in command vi mode.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='❮'
++  # Prompt symbol in visual vi mode.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIVIS_CONTENT_EXPANSION='V'
++  # Prompt symbol in overwrite vi mode.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIOWR_CONTENT_EXPANSION='▶'
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_OVERWRITE_STATE=true
++  # No line terminator if prompt_char is the last segment.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL=
++  # No line introducer if prompt_char is the first segment.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_PROMPT_FIRST_SEGMENT_START_SYMBOL=
++  # No surrounding whitespace.
++  typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_{LEFT,RIGHT}_WHITESPACE=
++
++  ##################################[ dir: current directory ]##################################
++  # Default current directory color.
++  typeset -g POWERLEVEL9K_DIR_FOREGROUND=31
++  # If directory is too long, shorten some of its segments to the shortest possible unique
++  # prefix. The shortened directory can be tab-completed to the original.
++  typeset -g POWERLEVEL9K_SHORTEN_STRATEGY=truncate_to_unique
++  # Replace removed segment suffixes with this symbol.
++  typeset -g POWERLEVEL9K_SHORTEN_DELIMITER=
++  # Color of the shortened directory segments.
++  typeset -g POWERLEVEL9K_DIR_SHORTENED_FOREGROUND=103
++  # Color of the anchor directory segments. Anchor segments are never shortened. The first
++  # segment is always an anchor.
++  typeset -g POWERLEVEL9K_DIR_ANCHOR_FOREGROUND=39
++  # Display anchor directory segments in bold.
++  typeset -g POWERLEVEL9K_DIR_ANCHOR_BOLD=true
++  # Don't shorten directories that contain any of these files. They are anchors.
++  local anchor_files=(
++    .bzr
++    .citc
++    .git
++    .hg
++    .node-version
++    .python-version
++    .go-version
++    .ruby-version
++    .lua-version
++    .java-version
++    .perl-version
++    .php-version
++    .tool-versions
++    .mise.toml
++    .shorten_folder_marker
++    .svn
++    .terraform
++    CVS
++    Cargo.toml
++    composer.json
++    go.mod
++    package.json
++    stack.yaml
++  )
++  typeset -g POWERLEVEL9K_SHORTEN_FOLDER_MARKER="(${(j:|:)anchor_files})"
++  # If set to "first" ("last"), remove everything before the first (last) subdirectory that contains
++  # files matching $POWERLEVEL9K_SHORTEN_FOLDER_MARKER. For example, when the current directory is
++  # /foo/bar/git_repo/nested_git_repo/baz, prompt will display git_repo/nested_git_repo/baz (first)
++  # or nested_git_repo/baz (last). This assumes that git_repo and nested_git_repo contain markers
++  # and other directories don't.
++  #
++  # Optionally, "first" and "last" can be followed by ":<offset>" where <offset> is an integer.
++  # This moves the truncation point to the right (positive offset) or to the left (negative offset)
++  # relative to the marker. Plain "first" and "last" are equivalent to "first:0" and "last:0"
++  # respectively.
++  typeset -g POWERLEVEL9K_DIR_TRUNCATE_BEFORE_MARKER=false
++  # Don't shorten this many last directory segments. They are anchors.
++  typeset -g POWERLEVEL9K_SHORTEN_DIR_LENGTH=1
++  # Shorten directory if it's longer than this even if there is space for it. The value can
++  # be either absolute (e.g., '80') or a percentage of terminal width (e.g, '50%'). If empty,
++  # directory will be shortened only when prompt doesn't fit or when other parameters demand it
++  # (see POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS and POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS_PCT below).
++  # If set to `0`, directory will always be shortened to its minimum length.
++  typeset -g POWERLEVEL9K_DIR_MAX_LENGTH=80
++  # When `dir` segment is on the last prompt line, try to shorten it enough to leave at least this
++  # many columns for typing commands.
++  typeset -g POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS=40
++  # When `dir` segment is on the last prompt line, try to shorten it enough to leave at least
++  # COLUMNS * POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS_PCT * 0.01 columns for typing commands.
++  typeset -g POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS_PCT=50
++  # If set to true, embed a hyperlink into the directory. Useful for quickly
++  # opening a directory in the file manager simply by clicking the link.
++  # Can also be handy when the directory is shortened, as it allows you to see
++  # the full directory that was used in previous commands.
++  typeset -g POWERLEVEL9K_DIR_HYPERLINK=false
++
++  # Enable special styling for non-writable and non-existent directories. See POWERLEVEL9K_LOCK_ICON
++  # and POWERLEVEL9K_DIR_CLASSES below.
++  typeset -g POWERLEVEL9K_DIR_SHOW_WRITABLE=v3
++
++  # The default icon shown next to non-writable and non-existent directories when
++  # POWERLEVEL9K_DIR_SHOW_WRITABLE is set to v3.
++  # typeset -g POWERLEVEL9K_LOCK_ICON='⭐'
++
++  # POWERLEVEL9K_DIR_CLASSES allows you to specify custom icons and colors for different
++  # directories. It must be an array with 3 * N elements. Each triplet consists of:
++  #
++  #   1. A pattern against which the current directory ($PWD) is matched. Matching is done with
++  #      extended_glob option enabled.
++  #   2. Directory class for the purpose of styling.
++  #   3. An empty string.
++  #
++  # Triplets are tried in order. The first triplet whose pattern matches $PWD wins.
++  #
++  # If POWERLEVEL9K_DIR_SHOW_WRITABLE is set to v3, non-writable and non-existent directories
++  # acquire class suffix _NOT_WRITABLE and NON_EXISTENT respectively.
++  #
++  # For example, given these settings:
++  #
++  #   typeset -g POWERLEVEL9K_DIR_CLASSES=(
++  #     '~/work(|/*)'  WORK     ''
++  #     '~(|/*)'       HOME     ''
++  #     '*'            DEFAULT  '')
++  #
++  # Whenever the current directory is ~/work or a subdirectory of ~/work, it gets styled with one
++  # of the following classes depending on its writability and existence: WORK, WORK_NOT_WRITABLE or
++  # WORK_NON_EXISTENT.
++  #
++  # Simply assigning classes to directories doesn't have any visible effects. It merely gives you an
++  # option to define custom colors and icons for different directory classes.
++  #
++  #   # Styling for WORK.
++  #   typeset -g POWERLEVEL9K_DIR_WORK_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_DIR_WORK_FOREGROUND=31
++  #   typeset -g POWERLEVEL9K_DIR_WORK_SHORTENED_FOREGROUND=103
++  #   typeset -g POWERLEVEL9K_DIR_WORK_ANCHOR_FOREGROUND=39
++  #
++  #   # Styling for WORK_NOT_WRITABLE.
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NOT_WRITABLE_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NOT_WRITABLE_FOREGROUND=31
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NOT_WRITABLE_SHORTENED_FOREGROUND=103
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NOT_WRITABLE_ANCHOR_FOREGROUND=39
++  #
++  #   # Styling for WORK_NON_EXISTENT.
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NON_EXISTENT_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NON_EXISTENT_FOREGROUND=31
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NON_EXISTENT_SHORTENED_FOREGROUND=103
++  #   typeset -g POWERLEVEL9K_DIR_WORK_NON_EXISTENT_ANCHOR_FOREGROUND=39
++  #
++  # If a styling parameter isn't explicitly defined for some class, it falls back to the classless
++  # parameter. For example, if POWERLEVEL9K_DIR_WORK_NOT_WRITABLE_FOREGROUND is not set, it falls
++  # back to POWERLEVEL9K_DIR_FOREGROUND.
++  #
++  # typeset -g POWERLEVEL9K_DIR_CLASSES=()
++
++  # Custom prefix.
++  # typeset -g POWERLEVEL9K_DIR_PREFIX='%244Fin '
++
++  #####################################[ vcs: git status ]######################################
++  # Branch icon. Set this parameter to '\UE0A0 ' for the popular Powerline branch icon.
++  typeset -g POWERLEVEL9K_VCS_BRANCH_ICON='\uF126 '
++
++  # Untracked files icon. It's really a question mark, your font isn't broken.
++  # Change the value of this parameter to show a different icon.
++  typeset -g POWERLEVEL9K_VCS_UNTRACKED_ICON='?'
++
++  # Formatter for Git status.
++  #
++  # Example output: master wip ⇣42⇡42 *42 merge ~42 +42 !42 ?42.
++  #
++  # You can edit the function to customize how Git status looks.
++  #
++  # VCS_STATUS_* parameters are set by gitstatus plugin. See reference:
++  # https://github.com/romkatv/gitstatus/blob/master/gitstatus.plugin.zsh.
++  function my_git_formatter() {
++    emulate -L zsh
++
++    if [[ -n $P9K_CONTENT ]]; then
++      # If P9K_CONTENT is not empty, use it. It's either "loading" or from vcs_info (not from
++      # gitstatus plugin). VCS_STATUS_* parameters are not available in this case.
++      typeset -g my_git_format=$P9K_CONTENT
++      return
++    fi
++
++    if (( $1 )); then
++      # Styling for up-to-date Git status.
++      local       meta='%244F'  # grey foreground
++      local      clean='%76F'   # green foreground
++      local   modified='%178F'  # yellow foreground
++      local  untracked='%39F'   # blue foreground
++      local conflicted='%196F'  # red foreground
++    else
++      # Styling for incomplete and stale Git status.
++      local       meta='%244F'  # grey foreground
++      local      clean='%244F'  # grey foreground
++      local   modified='%244F'  # grey foreground
++      local  untracked='%244F'  # grey foreground
++      local conflicted='%244F'  # grey foreground
++    fi
++
++    local res
++
++    if [[ -n $VCS_STATUS_LOCAL_BRANCH ]]; then
++      local branch=${(V)VCS_STATUS_LOCAL_BRANCH}
++      # If local branch name is at most 32 characters long, show it in full.
++      # Otherwise show the first 12 … the last 12.
++      # Tip: To always show local branch name in full without truncation, delete the next line.
++      (( $#branch > 32 )) && branch[13,-13]="…"  # <-- this line
++      res+="${clean}${(g::)POWERLEVEL9K_VCS_BRANCH_ICON}${branch//\%/%%}"
++    fi
++
++    if [[ -n $VCS_STATUS_TAG
++          # Show tag only if not on a branch.
++          # Tip: To always show tag, delete the next line.
++          && -z $VCS_STATUS_LOCAL_BRANCH  # <-- this line
++        ]]; then
++      local tag=${(V)VCS_STATUS_TAG}
++      # If tag name is at most 32 characters long, show it in full.
++      # Otherwise show the first 12 … the last 12.
++      # Tip: To always show tag name in full without truncation, delete the next line.
++      (( $#tag > 32 )) && tag[13,-13]="…"  # <-- this line
++      res+="${meta}#${clean}${tag//\%/%%}"
++    fi
++
++    # Display the current Git commit if there is no branch and no tag.
++    # Tip: To always display the current Git commit, delete the next line.
++    [[ -z $VCS_STATUS_LOCAL_BRANCH && -z $VCS_STATUS_TAG ]] &&  # <-- this line
++      res+="${meta}@${clean}${VCS_STATUS_COMMIT[1,8]}"
++
++    # Show tracking branch name if it differs from local branch.
++    if [[ -n ${VCS_STATUS_REMOTE_BRANCH:#$VCS_STATUS_LOCAL_BRANCH} ]]; then
++      res+="${meta}:${clean}${(V)VCS_STATUS_REMOTE_BRANCH//\%/%%}"
++    fi
++
++    # Display "wip" if the latest commit's summary contains "wip" or "WIP".
++    if [[ $VCS_STATUS_COMMIT_SUMMARY == (|*[^[:alnum:]])(wip|WIP)(|[^[:alnum:]]*) ]]; then
++      res+=" ${modified}wip"
++    fi
++
++    if (( VCS_STATUS_COMMITS_AHEAD || VCS_STATUS_COMMITS_BEHIND )); then
++      # ⇣42 if behind the remote.
++      (( VCS_STATUS_COMMITS_BEHIND )) && res+=" ${clean}⇣${VCS_STATUS_COMMITS_BEHIND}"
++      # ⇡42 if ahead of the remote; no leading space if also behind the remote: ⇣42⇡42.
++      (( VCS_STATUS_COMMITS_AHEAD && !VCS_STATUS_COMMITS_BEHIND )) && res+=" "
++      (( VCS_STATUS_COMMITS_AHEAD  )) && res+="${clean}⇡${VCS_STATUS_COMMITS_AHEAD}"
++    elif [[ -n $VCS_STATUS_REMOTE_BRANCH ]]; then
++      # Tip: Uncomment the next line to display '=' if up to date with the remote.
++      # res+=" ${clean}="
++    fi
++
++    # ⇠42 if behind the push remote.
++    (( VCS_STATUS_PUSH_COMMITS_BEHIND )) && res+=" ${clean}⇠${VCS_STATUS_PUSH_COMMITS_BEHIND}"
++    (( VCS_STATUS_PUSH_COMMITS_AHEAD && !VCS_STATUS_PUSH_COMMITS_BEHIND )) && res+=" "
++    # ⇢42 if ahead of the push remote; no leading space if also behind: ⇠42⇢42.
++    (( VCS_STATUS_PUSH_COMMITS_AHEAD  )) && res+="${clean}⇢${VCS_STATUS_PUSH_COMMITS_AHEAD}"
++    # *42 if have stashes.
++    (( VCS_STATUS_STASHES        )) && res+=" ${clean}*${VCS_STATUS_STASHES}"
++    # 'merge' if the repo is in an unusual state.
++    [[ -n $VCS_STATUS_ACTION     ]] && res+=" ${conflicted}${VCS_STATUS_ACTION}"
++    # ~42 if have merge conflicts.
++    (( VCS_STATUS_NUM_CONFLICTED )) && res+=" ${conflicted}~${VCS_STATUS_NUM_CONFLICTED}"
++    # +42 if have staged changes.
++    (( VCS_STATUS_NUM_STAGED     )) && res+=" ${modified}+${VCS_STATUS_NUM_STAGED}"
++    # !42 if have unstaged changes.
++    (( VCS_STATUS_NUM_UNSTAGED   )) && res+=" ${modified}!${VCS_STATUS_NUM_UNSTAGED}"
++    # ?42 if have untracked files. It's really a question mark, your font isn't broken.
++    # See POWERLEVEL9K_VCS_UNTRACKED_ICON above if you want to use a different icon.
++    # Remove the next line if you don't want to see untracked files at all.
++    (( VCS_STATUS_NUM_UNTRACKED  )) && res+=" ${untracked}${(g::)POWERLEVEL9K_VCS_UNTRACKED_ICON}${VCS_STATUS_NUM_UNTRACKED}"
++    # "─" if the number of unstaged files is unknown. This can happen due to
++    # POWERLEVEL9K_VCS_MAX_INDEX_SIZE_DIRTY (see below) being set to a non-negative number lower
++    # than the number of files in the Git index, or due to bash.showDirtyState being set to false
++    # in the repository config. The number of staged and untracked files may also be unknown
++    # in this case.
++    (( VCS_STATUS_HAS_UNSTAGED == -1 )) && res+=" ${modified}─"
++
++    typeset -g my_git_format=$res
++  }
++  functions -M my_git_formatter 2>/dev/null
++
++  # Don't count the number of unstaged, untracked and conflicted files in Git repositories with
++  # more than this many files in the index. Negative value means infinity.
++  #
++  # If you are working in Git repositories with tens of millions of files and seeing performance
++  # sagging, try setting POWERLEVEL9K_VCS_MAX_INDEX_SIZE_DIRTY to a number lower than the output
++  # of `git ls-files | wc -l`. Alternatively, add `bash.showDirtyState = false` to the repository's
++  # config: `git config bash.showDirtyState false`.
++  typeset -g POWERLEVEL9K_VCS_MAX_INDEX_SIZE_DIRTY=-1
++
++  # Don't show Git status in prompt for repositories whose workdir matches this pattern.
++  # For example, if set to '~', the Git repository at $HOME/.git will be ignored.
++  # Multiple patterns can be combined with '|': '~(|/foo)|/bar/baz/*'.
++  typeset -g POWERLEVEL9K_VCS_DISABLED_WORKDIR_PATTERN='~'
++
++  # Disable the default Git status formatting.
++  typeset -g POWERLEVEL9K_VCS_DISABLE_GITSTATUS_FORMATTING=true
++  # Install our own Git status formatter.
++  typeset -g POWERLEVEL9K_VCS_CONTENT_EXPANSION='${$((my_git_formatter(1)))+${my_git_format}}'
++  typeset -g POWERLEVEL9K_VCS_LOADING_CONTENT_EXPANSION='${$((my_git_formatter(0)))+${my_git_format}}'
++  # Enable counters for staged, unstaged, etc.
++  typeset -g POWERLEVEL9K_VCS_{STAGED,UNSTAGED,UNTRACKED,CONFLICTED,COMMITS_AHEAD,COMMITS_BEHIND}_MAX_NUM=-1
++
++  # Icon color.
++  typeset -g POWERLEVEL9K_VCS_VISUAL_IDENTIFIER_COLOR=76
++  typeset -g POWERLEVEL9K_VCS_LOADING_VISUAL_IDENTIFIER_COLOR=244
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_VCS_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # Custom prefix.
++  typeset -g POWERLEVEL9K_VCS_PREFIX='%244Fon '
++
++  # Show status of repositories of these types. You can add svn and/or hg if you are
++  # using them. If you do, your prompt may become slow even when your current directory
++  # isn't in an svn or hg reposotiry.
++  typeset -g POWERLEVEL9K_VCS_BACKENDS=(git)
++
++  # These settings are used for repositories other than Git or when gitstatusd fails and
++  # Powerlevel10k has to fall back to using vcs_info.
++  typeset -g POWERLEVEL9K_VCS_CLEAN_FOREGROUND=76
++  typeset -g POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND=76
++  typeset -g POWERLEVEL9K_VCS_MODIFIED_FOREGROUND=178
++
++  ##########################[ status: exit code of the last command ]###########################
++  # Enable OK_PIPE, ERROR_PIPE and ERROR_SIGNAL status states to allow us to enable, disable and
++  # style them independently from the regular OK and ERROR state.
++  typeset -g POWERLEVEL9K_STATUS_EXTENDED_STATES=true
++
++  # Status on success. No content, just an icon. No need to show it if prompt_char is enabled as
++  # it will signify success by turning green.
++  typeset -g POWERLEVEL9K_STATUS_OK=true
++  typeset -g POWERLEVEL9K_STATUS_OK_FOREGROUND=70
++  typeset -g POWERLEVEL9K_STATUS_OK_VISUAL_IDENTIFIER_EXPANSION='✔'
++
++  # Status when some part of a pipe command fails but the overall exit status is zero. It may look
++  # like this: 1|0.
++  typeset -g POWERLEVEL9K_STATUS_OK_PIPE=true
++  typeset -g POWERLEVEL9K_STATUS_OK_PIPE_FOREGROUND=70
++  typeset -g POWERLEVEL9K_STATUS_OK_PIPE_VISUAL_IDENTIFIER_EXPANSION='✔'
++
++  # Status when it's just an error code (e.g., '1'). No need to show it if prompt_char is enabled as
++  # it will signify error by turning red.
++  typeset -g POWERLEVEL9K_STATUS_ERROR=true
++  typeset -g POWERLEVEL9K_STATUS_ERROR_FOREGROUND=160
++  typeset -g POWERLEVEL9K_STATUS_ERROR_VISUAL_IDENTIFIER_EXPANSION='✘'
++
++  # Status when the last command was terminated by a signal.
++  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL=true
++  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_FOREGROUND=160
++  # Use terse signal names: "INT" instead of "SIGINT(2)".
++  typeset -g POWERLEVEL9K_STATUS_VERBOSE_SIGNAME=false
++  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_VISUAL_IDENTIFIER_EXPANSION='✘'
++
++  # Status when some part of a pipe command fails and the overall exit status is also non-zero.
++  # It may look like this: 1|0.
++  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE=true
++  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE_FOREGROUND=160
++  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE_VISUAL_IDENTIFIER_EXPANSION='✘'
++
++  ###################[ command_execution_time: duration of the last command ]###################
++  # Show duration of the last command if takes at least this many seconds.
++  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_THRESHOLD=3
++  # Show this many fractional digits. Zero means round to seconds.
++  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION=0
++  # Execution time color.
++  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND=248
++  # Duration format: 1d 2h 3m 4s.
++  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT='d h m s'
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # Custom prefix.
++  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PREFIX='%244Ftook '
++
++  #######################[ background_jobs: presence of background jobs ]#######################
++  # Don't show the number of background jobs.
++  typeset -g POWERLEVEL9K_BACKGROUND_JOBS_VERBOSE=false
++  # Background jobs color.
++  typeset -g POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND=37
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_BACKGROUND_JOBS_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #######################[ direnv: direnv status (https://direnv.net/) ]########################
++  # Direnv color.
++  typeset -g POWERLEVEL9K_DIRENV_FOREGROUND=178
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_DIRENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###############[ asdf: asdf version manager (https://github.com/asdf-vm/asdf) ]###############
++  # Default asdf color. Only used to display tools for which there is no color override (see below).
++  # Tip:  Override this parameter for ${TOOL} with POWERLEVEL9K_ASDF_${TOOL}_FOREGROUND.
++  typeset -g POWERLEVEL9K_ASDF_FOREGROUND=66
++
++  # There are four parameters that can be used to hide asdf tools. Each parameter describes
++  # conditions under which a tool gets hidden. Parameters can hide tools but not unhide them. If at
++  # least one parameter decides to hide a tool, that tool gets hidden. If no parameter decides to
++  # hide a tool, it gets shown.
++  #
++  # Special note on the difference between POWERLEVEL9K_ASDF_SOURCES and
++  # POWERLEVEL9K_ASDF_PROMPT_ALWAYS_SHOW. Consider the effect of the following commands:
++  #
++  #   asdf local  python 3.8.1
++  #   asdf global python 3.8.1
++  #
++  # After running both commands the current python version is 3.8.1 and its source is "local" as
++  # it takes precedence over "global". If POWERLEVEL9K_ASDF_PROMPT_ALWAYS_SHOW is set to false,
++  # it'll hide python version in this case because 3.8.1 is the same as the global version.
++  # POWERLEVEL9K_ASDF_SOURCES will hide python version only if the value of this parameter doesn't
++  # contain "local".
++
++  # Hide tool versions that don't come from one of these sources.
++  #
++  # Available sources:
++  #
++  # - shell   `asdf current` says "set by ASDF_${TOOL}_VERSION environment variable"
++  # - local   `asdf current` says "set by /some/not/home/directory/file"
++  # - global  `asdf current` says "set by /home/username/file"
++  #
++  # Note: If this parameter is set to (shell local global), it won't hide tools.
++  # Tip:  Override this parameter for ${TOOL} with POWERLEVEL9K_ASDF_${TOOL}_SOURCES.
++  typeset -g POWERLEVEL9K_ASDF_SOURCES=(shell local global)
++
++  # If set to false, hide tool versions that are the same as global.
++  #
++  # Note: The name of this parameter doesn't reflect its meaning at all.
++  # Note: If this parameter is set to true, it won't hide tools.
++  # Tip:  Override this parameter for ${TOOL} with POWERLEVEL9K_ASDF_${TOOL}_PROMPT_ALWAYS_SHOW.
++  typeset -g POWERLEVEL9K_ASDF_PROMPT_ALWAYS_SHOW=false
++
++  # If set to false, hide tool versions that are equal to "system".
++  #
++  # Note: If this parameter is set to true, it won't hide tools.
++  # Tip: Override this parameter for ${TOOL} with POWERLEVEL9K_ASDF_${TOOL}_SHOW_SYSTEM.
++  typeset -g POWERLEVEL9K_ASDF_SHOW_SYSTEM=true
++
++  # If set to non-empty value, hide tools unless there is a file matching the specified file pattern
++  # in the current directory, or its parent directory, or its grandparent directory, and so on.
++  #
++  # Note: If this parameter is set to empty value, it won't hide tools.
++  # Note: SHOW_ON_UPGLOB isn't specific to asdf. It works with all prompt segments.
++  # Tip: Override this parameter for ${TOOL} with POWERLEVEL9K_ASDF_${TOOL}_SHOW_ON_UPGLOB.
++  #
++  # Example: Hide nodejs version when there is no package.json and no *.js files in the current
++  # directory, in `..`, in `../..` and so on.
++  #
++  #   typeset -g POWERLEVEL9K_ASDF_NODEJS_SHOW_ON_UPGLOB='*.js|package.json'
++  typeset -g POWERLEVEL9K_ASDF_SHOW_ON_UPGLOB=
++
++  # Ruby version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_RUBY_FOREGROUND=168
++  # typeset -g POWERLEVEL9K_ASDF_RUBY_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_RUBY_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Python version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_PYTHON_FOREGROUND=37
++  # typeset -g POWERLEVEL9K_ASDF_PYTHON_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_PYTHON_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Go version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_GOLANG_FOREGROUND=37
++  # typeset -g POWERLEVEL9K_ASDF_GOLANG_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_GOLANG_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Node.js version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_NODEJS_FOREGROUND=70
++  # typeset -g POWERLEVEL9K_ASDF_NODEJS_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_NODEJS_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Rust version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_RUST_FOREGROUND=37
++  # typeset -g POWERLEVEL9K_ASDF_RUST_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_RUST_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # .NET Core version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_DOTNET_CORE_FOREGROUND=134
++  # typeset -g POWERLEVEL9K_ASDF_DOTNET_CORE_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_DOTNET_CORE_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Flutter version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_FLUTTER_FOREGROUND=38
++  # typeset -g POWERLEVEL9K_ASDF_FLUTTER_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_FLUTTER_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Lua version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_LUA_FOREGROUND=32
++  # typeset -g POWERLEVEL9K_ASDF_LUA_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_LUA_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Java version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_JAVA_FOREGROUND=32
++  # typeset -g POWERLEVEL9K_ASDF_JAVA_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_JAVA_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Perl version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_PERL_FOREGROUND=67
++  # typeset -g POWERLEVEL9K_ASDF_PERL_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_PERL_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Erlang version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_ERLANG_FOREGROUND=125
++  # typeset -g POWERLEVEL9K_ASDF_ERLANG_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_ERLANG_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Elixir version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_ELIXIR_FOREGROUND=129
++  # typeset -g POWERLEVEL9K_ASDF_ELIXIR_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_ELIXIR_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Postgres version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_POSTGRES_FOREGROUND=31
++  # typeset -g POWERLEVEL9K_ASDF_POSTGRES_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_POSTGRES_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # PHP version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_PHP_FOREGROUND=99
++  # typeset -g POWERLEVEL9K_ASDF_PHP_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_PHP_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Haskell version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_HASKELL_FOREGROUND=172
++  # typeset -g POWERLEVEL9K_ASDF_HASKELL_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_HASKELL_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  # Julia version from asdf.
++  typeset -g POWERLEVEL9K_ASDF_JULIA_FOREGROUND=70
++  # typeset -g POWERLEVEL9K_ASDF_JULIA_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_ASDF_JULIA_SHOW_ON_UPGLOB='*.foo|*.bar'
++
++  ##########[ nordvpn: nordvpn connection status, linux only (https://nordvpn.com/) ]###########
++  # NordVPN connection indicator color.
++  typeset -g POWERLEVEL9K_NORDVPN_FOREGROUND=39
++  # Hide NordVPN connection indicator when not connected.
++  typeset -g POWERLEVEL9K_NORDVPN_{DISCONNECTED,CONNECTING,DISCONNECTING}_CONTENT_EXPANSION=
++  typeset -g POWERLEVEL9K_NORDVPN_{DISCONNECTED,CONNECTING,DISCONNECTING}_VISUAL_IDENTIFIER_EXPANSION=
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_NORDVPN_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #################[ ranger: ranger shell (https://github.com/ranger/ranger) ]##################
++  # Ranger shell color.
++  typeset -g POWERLEVEL9K_RANGER_FOREGROUND=178
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_RANGER_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  
++  ####################[ yazi: yazi shell (https://github.com/sxyazi/yazi) ]#####################
++  # Yazi shell color.
++  typeset -g POWERLEVEL9K_YAZI_FOREGROUND=178
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_YAZI_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ######################[ nnn: nnn shell (https://github.com/jarun/nnn) ]#######################
++  # Nnn shell color.
++  typeset -g POWERLEVEL9K_NNN_FOREGROUND=72
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_NNN_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ######################[ lf: lf shell (https://github.com/gokcehan/lf) ]#######################
++  # lf shell color.
++  typeset -g POWERLEVEL9K_LF_FOREGROUND=72
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_LF_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##################[ xplr: xplr shell (https://github.com/sayanarijit/xplr) ]##################
++  # xplr shell color.
++  typeset -g POWERLEVEL9K_XPLR_FOREGROUND=72
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_XPLR_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###########################[ vim_shell: vim shell indicator (:sh) ]###########################
++  # Vim shell indicator color.
++  typeset -g POWERLEVEL9K_VIM_SHELL_FOREGROUND=34
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_VIM_SHELL_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ######[ midnight_commander: midnight commander shell (https://midnight-commander.org/) ]######
++  # Midnight Commander shell color.
++  typeset -g POWERLEVEL9K_MIDNIGHT_COMMANDER_FOREGROUND=178
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_MIDNIGHT_COMMANDER_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #[ nix_shell: nix shell (https://nixos.org/nixos/nix-pills/developing-with-nix-shell.html) ]##
++  # Nix shell color.
++  typeset -g POWERLEVEL9K_NIX_SHELL_FOREGROUND=74
++
++  # Display the icon of nix_shell if PATH contains a subdirectory of /nix/store.
++  # typeset -g POWERLEVEL9K_NIX_SHELL_INFER_FROM_PATH=false
++
++  # Tip: If you want to see just the icon without "pure" and "impure", uncomment the next line.
++  # typeset -g POWERLEVEL9K_NIX_SHELL_CONTENT_EXPANSION=
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_NIX_SHELL_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##################[ chezmoi_shell: chezmoi shell (https://www.chezmoi.io/) ]##################
++  # chezmoi shell color.
++  typeset -g POWERLEVEL9K_CHEZMOI_SHELL_FOREGROUND=33
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_CHEZMOI_SHELL_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##################################[ disk_usage: disk usage ]##################################
++  # Colors for different levels of disk usage.
++  typeset -g POWERLEVEL9K_DISK_USAGE_NORMAL_FOREGROUND=35
++  typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_FOREGROUND=220
++  typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_FOREGROUND=160
++  # Thresholds for different levels of disk usage (percentage points).
++  typeset -g POWERLEVEL9K_DISK_USAGE_WARNING_LEVEL=90
++  typeset -g POWERLEVEL9K_DISK_USAGE_CRITICAL_LEVEL=95
++  # If set to true, hide disk usage when below $POWERLEVEL9K_DISK_USAGE_WARNING_LEVEL percent.
++  typeset -g POWERLEVEL9K_DISK_USAGE_ONLY_WARNING=false
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_DISK_USAGE_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###########[ vi_mode: vi mode (you don't need this if you've enabled prompt_char) ]###########
++  # Text and color for normal (a.k.a. command) vi mode.
++  typeset -g POWERLEVEL9K_VI_COMMAND_MODE_STRING=NORMAL
++  typeset -g POWERLEVEL9K_VI_MODE_NORMAL_FOREGROUND=106
++  # Text and color for visual vi mode.
++  typeset -g POWERLEVEL9K_VI_VISUAL_MODE_STRING=VISUAL
++  typeset -g POWERLEVEL9K_VI_MODE_VISUAL_FOREGROUND=68
++  # Text and color for overtype (a.k.a. overwrite and replace) vi mode.
++  typeset -g POWERLEVEL9K_VI_OVERWRITE_MODE_STRING=OVERTYPE
++  typeset -g POWERLEVEL9K_VI_MODE_OVERWRITE_FOREGROUND=172
++  # Text and color for insert vi mode.
++  typeset -g POWERLEVEL9K_VI_INSERT_MODE_STRING=
++  typeset -g POWERLEVEL9K_VI_MODE_INSERT_FOREGROUND=66
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_VI_MODE_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ######################################[ ram: free RAM ]#######################################
++  # RAM color.
++  typeset -g POWERLEVEL9K_RAM_FOREGROUND=66
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_RAM_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #####################################[ swap: used swap ]######################################
++  # Swap color.
++  typeset -g POWERLEVEL9K_SWAP_FOREGROUND=96
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_SWAP_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ######################################[ load: CPU load ]######################################
++  # Show average CPU load over this many last minutes. Valid values are 1, 5 and 15.
++  typeset -g POWERLEVEL9K_LOAD_WHICH=5
++  # Load color when load is under 50%.
++  typeset -g POWERLEVEL9K_LOAD_NORMAL_FOREGROUND=66
++  # Load color when load is between 50% and 70%.
++  typeset -g POWERLEVEL9K_LOAD_WARNING_FOREGROUND=178
++  # Load color when load is over 70%.
++  typeset -g POWERLEVEL9K_LOAD_CRITICAL_FOREGROUND=166
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_LOAD_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ################[ todo: todo items (https://github.com/todotxt/todo.txt-cli) ]################
++  # Todo color.
++  typeset -g POWERLEVEL9K_TODO_FOREGROUND=110
++  # Hide todo when the total number of tasks is zero.
++  typeset -g POWERLEVEL9K_TODO_HIDE_ZERO_TOTAL=true
++  # Hide todo when the number of tasks after filtering is zero.
++  typeset -g POWERLEVEL9K_TODO_HIDE_ZERO_FILTERED=false
++
++  # Todo format. The following parameters are available within the expansion.
++  #
++  # - P9K_TODO_TOTAL_TASK_COUNT     The total number of tasks.
++  # - P9K_TODO_FILTERED_TASK_COUNT  The number of tasks after filtering.
++  #
++  # These variables correspond to the last line of the output of `todo.sh -p ls`:
++  #
++  #   TODO: 24 of 42 tasks shown
++  #
++  # Here 24 is P9K_TODO_FILTERED_TASK_COUNT and 42 is P9K_TODO_TOTAL_TASK_COUNT.
++  #
++  # typeset -g POWERLEVEL9K_TODO_CONTENT_EXPANSION='$P9K_TODO_FILTERED_TASK_COUNT'
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_TODO_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###########[ timewarrior: timewarrior tracking status (https://timewarrior.net/) ]############
++  # Timewarrior color.
++  typeset -g POWERLEVEL9K_TIMEWARRIOR_FOREGROUND=110
++  # If the tracked task is longer than 24 characters, truncate and append "…".
++  # Tip: To always display tasks without truncation, delete the following parameter.
++  # Tip: To hide task names and display just the icon when time tracking is enabled, set the
++  # value of the following parameter to "".
++  typeset -g POWERLEVEL9K_TIMEWARRIOR_CONTENT_EXPANSION='${P9K_CONTENT:0:24}${${P9K_CONTENT:24}:+…}'
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_TIMEWARRIOR_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##############[ taskwarrior: taskwarrior task count (https://taskwarrior.org/) ]##############
++  # Taskwarrior color.
++  typeset -g POWERLEVEL9K_TASKWARRIOR_FOREGROUND=74
++
++  # Taskwarrior segment format. The following parameters are available within the expansion.
++  #
++  # - P9K_TASKWARRIOR_PENDING_COUNT   The number of pending tasks: `task +PENDING count`.
++  # - P9K_TASKWARRIOR_OVERDUE_COUNT   The number of overdue tasks: `task +OVERDUE count`.
++  #
++  # Zero values are represented as empty parameters.
++  #
++  # The default format:
++  #
++  #   '${P9K_TASKWARRIOR_OVERDUE_COUNT:+"!$P9K_TASKWARRIOR_OVERDUE_COUNT/"}$P9K_TASKWARRIOR_PENDING_COUNT'
++  #
++  # typeset -g POWERLEVEL9K_TASKWARRIOR_CONTENT_EXPANSION='$P9K_TASKWARRIOR_PENDING_COUNT'
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_TASKWARRIOR_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ######[ per_directory_history: Oh My Zsh per-directory-history local/global indicator ]#######
++  # Color when using local/global history.
++  typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_LOCAL_FOREGROUND=135
++  typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_GLOBAL_FOREGROUND=130
++
++  # Tip: Uncomment the next two lines to hide "local"/"global" text and leave just the icon.
++  # typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_LOCAL_CONTENT_EXPANSION=''
++  # typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_GLOBAL_CONTENT_EXPANSION=''
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_LOCAL_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # typeset -g POWERLEVEL9K_PER_DIRECTORY_HISTORY_GLOBAL_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ################################[ cpu_arch: CPU architecture ]################################
++  # CPU architecture color.
++  typeset -g POWERLEVEL9K_CPU_ARCH_FOREGROUND=172
++
++  # Hide the segment when on a specific CPU architecture.
++  # typeset -g POWERLEVEL9K_CPU_ARCH_X86_64_CONTENT_EXPANSION=
++  # typeset -g POWERLEVEL9K_CPU_ARCH_X86_64_VISUAL_IDENTIFIER_EXPANSION=
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_CPU_ARCH_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##################################[ context: user@hostname ]##################################
++  # Context color when running with privileges.
++  typeset -g POWERLEVEL9K_CONTEXT_ROOT_FOREGROUND=178
++  # Context color in SSH without privileges.
++  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_FOREGROUND=180
++  # Default context color (no privileges, no SSH).
++  typeset -g POWERLEVEL9K_CONTEXT_FOREGROUND=180
++
++  # Context format when running with privileges: bold user@hostname.
++  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE='%B%n@%m'
++  # Context format when in SSH without privileges: user@hostname.
++  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_TEMPLATE='%n@%m'
++  # Default context format (no privileges, no SSH): user@hostname.
++  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE='%n@%m'
++
++  # Don't show context unless running with privileges or in SSH.
++  # Tip: Remove the next line to always show context.
++  typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO}_{CONTENT,VISUAL_IDENTIFIER}_EXPANSION=
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_CONTEXT_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # Custom prefix.
++  typeset -g POWERLEVEL9K_CONTEXT_PREFIX='%244Fwith '
++
++  ###[ virtualenv: python virtual environment (https://docs.python.org/3/library/venv.html) ]###
++  # Python virtual environment color.
++  typeset -g POWERLEVEL9K_VIRTUALENV_FOREGROUND=37
++  # Don't show Python version next to the virtual environment name.
++  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_PYTHON_VERSION=false
++  # If set to "false", won't show virtualenv if pyenv is already shown.
++  # If set to "if-different", won't show virtualenv if it's the same as pyenv.
++  typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_WITH_PYENV=false
++  # Separate environment name from Python version only with a space.
++  typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_VIRTUALENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #####################[ anaconda: conda environment (https://conda.io/) ]######################
++  # Anaconda environment color.
++  typeset -g POWERLEVEL9K_ANACONDA_FOREGROUND=37
++
++  # Anaconda segment format. The following parameters are available within the expansion.
++  #
++  # - CONDA_PREFIX                 Absolute path to the active Anaconda/Miniconda environment.
++  # - CONDA_DEFAULT_ENV            Name of the active Anaconda/Miniconda environment.
++  # - CONDA_PROMPT_MODIFIER        Configurable prompt modifier (see below).
++  # - P9K_ANACONDA_PYTHON_VERSION  Current python version (python --version).
++  #
++  # CONDA_PROMPT_MODIFIER can be configured with the following command:
++  #
++  #   conda config --set env_prompt '({default_env}) '
++  #
++  # The last argument is a Python format string that can use the following variables:
++  #
++  # - prefix       The same as CONDA_PREFIX.
++  # - default_env  The same as CONDA_DEFAULT_ENV.
++  # - name         The last segment of CONDA_PREFIX.
++  # - stacked_env  Comma-separated list of names in the environment stack. The first element is
++  #                always the same as default_env.
++  #
++  # Note: '({default_env}) ' is the default value of env_prompt.
++  #
++  # The default value of POWERLEVEL9K_ANACONDA_CONTENT_EXPANSION expands to $CONDA_PROMPT_MODIFIER
++  # without the surrounding parentheses, or to the last path component of CONDA_PREFIX if the former
++  # is empty.
++  typeset -g POWERLEVEL9K_ANACONDA_CONTENT_EXPANSION='${${${${CONDA_PROMPT_MODIFIER#\(}% }%\)}:-${CONDA_PREFIX:t}}'
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_ANACONDA_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ################[ pyenv: python environment (https://github.com/pyenv/pyenv) ]################
++  # Pyenv color.
++  typeset -g POWERLEVEL9K_PYENV_FOREGROUND=37
++  # Hide python version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_PYENV_SOURCES=(shell local global)
++  # If set to false, hide python version if it's the same as global:
++  # $(pyenv version-name) == $(pyenv global).
++  typeset -g POWERLEVEL9K_PYENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide python version if it's equal to "system".
++  typeset -g POWERLEVEL9K_PYENV_SHOW_SYSTEM=true
++
++  # Pyenv segment format. The following parameters are available within the expansion.
++  #
++  # - P9K_CONTENT                Current pyenv environment (pyenv version-name).
++  # - P9K_PYENV_PYTHON_VERSION   Current python version (python --version).
++  #
++  # The default format has the following logic:
++  #
++  # 1. Display just "$P9K_CONTENT" if it's equal to "$P9K_PYENV_PYTHON_VERSION" or
++  #    starts with "$P9K_PYENV_PYTHON_VERSION/".
++  # 2. Otherwise display "$P9K_CONTENT $P9K_PYENV_PYTHON_VERSION".
++  typeset -g POWERLEVEL9K_PYENV_CONTENT_EXPANSION='${P9K_CONTENT}${${P9K_CONTENT:#$P9K_PYENV_PYTHON_VERSION(|/*)}:+ $P9K_PYENV_PYTHON_VERSION}'
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PYENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ################[ goenv: go environment (https://github.com/syndbg/goenv) ]################
++  # Goenv color.
++  typeset -g POWERLEVEL9K_GOENV_FOREGROUND=37
++  # Hide go version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_GOENV_SOURCES=(shell local global)
++  # If set to false, hide go version if it's the same as global:
++  # $(goenv version-name) == $(goenv global).
++  typeset -g POWERLEVEL9K_GOENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide go version if it's equal to "system".
++  typeset -g POWERLEVEL9K_GOENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_GOENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##########[ nodenv: node.js version from nodenv (https://github.com/nodenv/nodenv) ]##########
++  # Nodenv color.
++  typeset -g POWERLEVEL9K_NODENV_FOREGROUND=70
++  # Hide node version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_NODENV_SOURCES=(shell local global)
++  # If set to false, hide node version if it's the same as global:
++  # $(nodenv version-name) == $(nodenv global).
++  typeset -g POWERLEVEL9K_NODENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide node version if it's equal to "system".
++  typeset -g POWERLEVEL9K_NODENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_NODENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##############[ nvm: node.js version from nvm (https://github.com/nvm-sh/nvm) ]###############
++  # Nvm color.
++  typeset -g POWERLEVEL9K_NVM_FOREGROUND=70
++  # If set to false, hide node version if it's the same as default:
++  # $(nvm version current) == $(nvm version default).
++  typeset -g POWERLEVEL9K_NVM_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide node version if it's equal to "system".
++  typeset -g POWERLEVEL9K_NVM_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_NVM_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ############[ nodeenv: node.js environment (https://github.com/ekalinin/nodeenv) ]############
++  # Nodeenv color.
++  typeset -g POWERLEVEL9K_NODEENV_FOREGROUND=70
++  # Don't show Node version next to the environment name.
++  typeset -g POWERLEVEL9K_NODEENV_SHOW_NODE_VERSION=false
++  # Separate environment name from Node version only with a space.
++  typeset -g POWERLEVEL9K_NODEENV_{LEFT,RIGHT}_DELIMITER=
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_NODEENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##############################[ node_version: node.js version ]###############################
++  # Node version color.
++  typeset -g POWERLEVEL9K_NODE_VERSION_FOREGROUND=70
++  # Show node version only when in a directory tree containing package.json.
++  typeset -g POWERLEVEL9K_NODE_VERSION_PROJECT_ONLY=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_NODE_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #######################[ go_version: go version (https://golang.org) ]########################
++  # Go version color.
++  typeset -g POWERLEVEL9K_GO_VERSION_FOREGROUND=37
++  # Show go version only when in a go project subdirectory.
++  typeset -g POWERLEVEL9K_GO_VERSION_PROJECT_ONLY=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_GO_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #################[ rust_version: rustc version (https://www.rust-lang.org) ]##################
++  # Rust version color.
++  typeset -g POWERLEVEL9K_RUST_VERSION_FOREGROUND=37
++  # Show rust version only when in a rust project subdirectory.
++  typeset -g POWERLEVEL9K_RUST_VERSION_PROJECT_ONLY=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_RUST_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###############[ dotnet_version: .NET version (https://dotnet.microsoft.com) ]################
++  # .NET version color.
++  typeset -g POWERLEVEL9K_DOTNET_VERSION_FOREGROUND=134
++  # Show .NET version only when in a .NET project subdirectory.
++  typeset -g POWERLEVEL9K_DOTNET_VERSION_PROJECT_ONLY=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_DOTNET_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #####################[ php_version: php version (https://www.php.net/) ]######################
++  # PHP version color.
++  typeset -g POWERLEVEL9K_PHP_VERSION_FOREGROUND=99
++  # Show PHP version only when in a PHP project subdirectory.
++  typeset -g POWERLEVEL9K_PHP_VERSION_PROJECT_ONLY=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PHP_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##########[ laravel_version: laravel php framework version (https://laravel.com/) ]###########
++  # Laravel version color.
++  typeset -g POWERLEVEL9K_LARAVEL_VERSION_FOREGROUND=161
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_LARAVEL_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ####################[ java_version: java version (https://www.java.com/) ]####################
++  # Java version color.
++  typeset -g POWERLEVEL9K_JAVA_VERSION_FOREGROUND=32
++  # Show java version only when in a java project subdirectory.
++  typeset -g POWERLEVEL9K_JAVA_VERSION_PROJECT_ONLY=true
++  # Show brief version.
++  typeset -g POWERLEVEL9K_JAVA_VERSION_FULL=false
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_JAVA_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###[ package: name@version from package.json (https://docs.npmjs.com/files/package.json) ]####
++  # Package color.
++  typeset -g POWERLEVEL9K_PACKAGE_FOREGROUND=117
++  # Package format. The following parameters are available within the expansion.
++  #
++  # - P9K_PACKAGE_NAME     The value of `name` field in package.json.
++  # - P9K_PACKAGE_VERSION  The value of `version` field in package.json.
++  #
++  # typeset -g POWERLEVEL9K_PACKAGE_CONTENT_EXPANSION='${P9K_PACKAGE_NAME//\%/%%}@${P9K_PACKAGE_VERSION//\%/%%}'
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PACKAGE_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #############[ rbenv: ruby version from rbenv (https://github.com/rbenv/rbenv) ]##############
++  # Rbenv color.
++  typeset -g POWERLEVEL9K_RBENV_FOREGROUND=168
++  # Hide ruby version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_RBENV_SOURCES=(shell local global)
++  # If set to false, hide ruby version if it's the same as global:
++  # $(rbenv version-name) == $(rbenv global).
++  typeset -g POWERLEVEL9K_RBENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide ruby version if it's equal to "system".
++  typeset -g POWERLEVEL9K_RBENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_RBENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #######################[ rvm: ruby version from rvm (https://rvm.io) ]########################
++  # Rvm color.
++  typeset -g POWERLEVEL9K_RVM_FOREGROUND=168
++  # Don't show @gemset at the end.
++  typeset -g POWERLEVEL9K_RVM_SHOW_GEMSET=false
++  # Don't show ruby- at the front.
++  typeset -g POWERLEVEL9K_RVM_SHOW_PREFIX=false
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_RVM_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###########[ fvm: flutter version management (https://github.com/leoafarias/fvm) ]############
++  # Fvm color.
++  typeset -g POWERLEVEL9K_FVM_FOREGROUND=38
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_FVM_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##########[ luaenv: lua version from luaenv (https://github.com/cehoffman/luaenv) ]###########
++  # Lua color.
++  typeset -g POWERLEVEL9K_LUAENV_FOREGROUND=32
++  # Hide lua version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_LUAENV_SOURCES=(shell local global)
++  # If set to false, hide lua version if it's the same as global:
++  # $(luaenv version-name) == $(luaenv global).
++  typeset -g POWERLEVEL9K_LUAENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide lua version if it's equal to "system".
++  typeset -g POWERLEVEL9K_LUAENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_LUAENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###############[ jenv: java version from jenv (https://github.com/jenv/jenv) ]################
++  # Java color.
++  typeset -g POWERLEVEL9K_JENV_FOREGROUND=32
++  # Hide java version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_JENV_SOURCES=(shell local global)
++  # If set to false, hide java version if it's the same as global:
++  # $(jenv version-name) == $(jenv global).
++  typeset -g POWERLEVEL9K_JENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide java version if it's equal to "system".
++  typeset -g POWERLEVEL9K_JENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_JENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###########[ plenv: perl version from plenv (https://github.com/tokuhirom/plenv) ]############
++  # Perl color.
++  typeset -g POWERLEVEL9K_PLENV_FOREGROUND=67
++  # Hide perl version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_PLENV_SOURCES=(shell local global)
++  # If set to false, hide perl version if it's the same as global:
++  # $(plenv version-name) == $(plenv global).
++  typeset -g POWERLEVEL9K_PLENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide perl version if it's equal to "system".
++  typeset -g POWERLEVEL9K_PLENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PLENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###########[ perlbrew: perl version from perlbrew (https://github.com/gugod/App-perlbrew) ]############
++  # Perlbrew color.
++  typeset -g POWERLEVEL9K_PERLBREW_FOREGROUND=67
++  # Show perlbrew version only when in a perl project subdirectory.
++  typeset -g POWERLEVEL9K_PERLBREW_PROJECT_ONLY=true
++  # Don't show "perl-" at the front.
++  typeset -g POWERLEVEL9K_PERLBREW_SHOW_PREFIX=false
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PERLBREW_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ############[ phpenv: php version from phpenv (https://github.com/phpenv/phpenv) ]############
++  # PHP color.
++  typeset -g POWERLEVEL9K_PHPENV_FOREGROUND=99
++  # Hide php version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_PHPENV_SOURCES=(shell local global)
++  # If set to false, hide php version if it's the same as global:
++  # $(phpenv version-name) == $(phpenv global).
++  typeset -g POWERLEVEL9K_PHPENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide php version if it's equal to "system".
++  typeset -g POWERLEVEL9K_PHPENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PHPENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #######[ scalaenv: scala version from scalaenv (https://github.com/scalaenv/scalaenv) ]#######
++  # Scala color.
++  typeset -g POWERLEVEL9K_SCALAENV_FOREGROUND=160
++  # Hide scala version if it doesn't come from one of these sources.
++  typeset -g POWERLEVEL9K_SCALAENV_SOURCES=(shell local global)
++  # If set to false, hide scala version if it's the same as global:
++  # $(scalaenv version-name) == $(scalaenv global).
++  typeset -g POWERLEVEL9K_SCALAENV_PROMPT_ALWAYS_SHOW=false
++  # If set to false, hide scala version if it's equal to "system".
++  typeset -g POWERLEVEL9K_SCALAENV_SHOW_SYSTEM=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_SCALAENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##########[ haskell_stack: haskell version from stack (https://haskellstack.org/) ]###########
++  # Haskell color.
++  typeset -g POWERLEVEL9K_HASKELL_STACK_FOREGROUND=172
++  # Hide haskell version if it doesn't come from one of these sources.
++  #
++  #   shell:  version is set by STACK_YAML
++  #   local:  version is set by stack.yaml up the directory tree
++  #   global: version is set by the implicit global project (~/.stack/global-project/stack.yaml)
++  typeset -g POWERLEVEL9K_HASKELL_STACK_SOURCES=(shell local)
++  # If set to false, hide haskell version if it's the same as in the implicit global project.
++  typeset -g POWERLEVEL9K_HASKELL_STACK_ALWAYS_SHOW=true
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_HASKELL_STACK_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ################[ terraform: terraform workspace (https://www.terraform.io) ]#################
++  # Don't show terraform workspace if it's literally "default".
++  typeset -g POWERLEVEL9K_TERRAFORM_SHOW_DEFAULT=false
++  # POWERLEVEL9K_TERRAFORM_CLASSES is an array with even number of elements. The first element
++  # in each pair defines a pattern against which the current terraform workspace gets matched.
++  # More specifically, it's P9K_CONTENT prior to the application of context expansion (see below)
++  # that gets matched. If you unset all POWERLEVEL9K_TERRAFORM_*CONTENT_EXPANSION parameters,
++  # you'll see this value in your prompt. The second element of each pair in
++  # POWERLEVEL9K_TERRAFORM_CLASSES defines the workspace class. Patterns are tried in order. The
++  # first match wins.
++  #
++  # For example, given these settings:
++  #
++  #   typeset -g POWERLEVEL9K_TERRAFORM_CLASSES=(
++  #     '*prod*'  PROD
++  #     '*test*'  TEST
++  #     '*'       OTHER)
++  #
++  # If your current terraform workspace is "project_test", its class is TEST because "project_test"
++  # doesn't match the pattern '*prod*' but does match '*test*'.
++  #
++  # You can define different colors, icons and content expansions for different classes:
++  #
++  #   typeset -g POWERLEVEL9K_TERRAFORM_TEST_FOREGROUND=28
++  #   typeset -g POWERLEVEL9K_TERRAFORM_TEST_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_TERRAFORM_TEST_CONTENT_EXPANSION='> ${P9K_CONTENT} <'
++  typeset -g POWERLEVEL9K_TERRAFORM_CLASSES=(
++      # '*prod*'  PROD    # These values are examples that are unlikely
++      # '*test*'  TEST    # to match your needs. Customize them as needed.
++      '*'         OTHER)
++  typeset -g POWERLEVEL9K_TERRAFORM_OTHER_FOREGROUND=38
++  # typeset -g POWERLEVEL9K_TERRAFORM_OTHER_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #############[ terraform_version: terraform version (https://www.terraform.io) ]##############
++  # Terraform version color.
++  typeset -g POWERLEVEL9K_TERRAFORM_VERSION_FOREGROUND=38
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_TERRAFORM_VERSION_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #############[ kubecontext: current kubernetes context (https://kubernetes.io/) ]#############
++  # Show kubecontext only when the command you are typing invokes one of these tools.
++  # Tip: Remove the next line to always show kubecontext.
++  typeset -g POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND='kubectl|helm|kubens|kubectx|oc|istioctl|kogito|k9s|helmfile|flux|fluxctl|stern|kubeseal|skaffold|kubent|kubecolor|cmctl|sparkctl'
++
++  # Kubernetes context classes for the purpose of using different colors, icons and expansions with
++  # different contexts.
++  #
++  # POWERLEVEL9K_KUBECONTEXT_CLASSES is an array with even number of elements. The first element
++  # in each pair defines a pattern against which the current kubernetes context gets matched.
++  # More specifically, it's P9K_CONTENT prior to the application of context expansion (see below)
++  # that gets matched. If you unset all POWERLEVEL9K_KUBECONTEXT_*CONTENT_EXPANSION parameters,
++  # you'll see this value in your prompt. The second element of each pair in
++  # POWERLEVEL9K_KUBECONTEXT_CLASSES defines the context class. Patterns are tried in order. The
++  # first match wins.
++  #
++  # For example, given these settings:
++  #
++  #   typeset -g POWERLEVEL9K_KUBECONTEXT_CLASSES=(
++  #     '*prod*'  PROD
++  #     '*test*'  TEST
++  #     '*'       DEFAULT)
++  #
++  # If your current kubernetes context is "deathray-testing/default", its class is TEST
++  # because "deathray-testing/default" doesn't match the pattern '*prod*' but does match '*test*'.
++  #
++  # You can define different colors, icons and content expansions for different classes:
++  #
++  #   typeset -g POWERLEVEL9K_KUBECONTEXT_TEST_FOREGROUND=28
++  #   typeset -g POWERLEVEL9K_KUBECONTEXT_TEST_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_KUBECONTEXT_TEST_CONTENT_EXPANSION='> ${P9K_CONTENT} <'
++  typeset -g POWERLEVEL9K_KUBECONTEXT_CLASSES=(
++      # '*prod*'  PROD    # These values are examples that are unlikely
++      # '*test*'  TEST    # to match your needs. Customize them as needed.
++      '*'       DEFAULT)
++  typeset -g POWERLEVEL9K_KUBECONTEXT_DEFAULT_FOREGROUND=134
++  # typeset -g POWERLEVEL9K_KUBECONTEXT_DEFAULT_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  # Use POWERLEVEL9K_KUBECONTEXT_CONTENT_EXPANSION to specify the content displayed by kubecontext
++  # segment. Parameter expansions are very flexible and fast, too. See reference:
++  # http://zsh.sourceforge.net/Doc/Release/Expansion.html#Parameter-Expansion.
++  #
++  # Within the expansion the following parameters are always available:
++  #
++  # - P9K_CONTENT                The content that would've been displayed if there was no content
++  #                              expansion defined.
++  # - P9K_KUBECONTEXT_NAME       The current context's name. Corresponds to column NAME in the
++  #                              output of `kubectl config get-contexts`.
++  # - P9K_KUBECONTEXT_CLUSTER    The current context's cluster. Corresponds to column CLUSTER in the
++  #                              output of `kubectl config get-contexts`.
++  # - P9K_KUBECONTEXT_NAMESPACE  The current context's namespace. Corresponds to column NAMESPACE
++  #                              in the output of `kubectl config get-contexts`. If there is no
++  #                              namespace, the parameter is set to "default".
++  # - P9K_KUBECONTEXT_USER       The current context's user. Corresponds to column AUTHINFO in the
++  #                              output of `kubectl config get-contexts`.
++  #
++  # If the context points to Google Kubernetes Engine (GKE) or Elastic Kubernetes Service (EKS),
++  # the following extra parameters are available:
++  #
++  # - P9K_KUBECONTEXT_CLOUD_NAME     Either "gke" or "eks".
++  # - P9K_KUBECONTEXT_CLOUD_ACCOUNT  Account/project ID.
++  # - P9K_KUBECONTEXT_CLOUD_ZONE     Availability zone.
++  # - P9K_KUBECONTEXT_CLOUD_CLUSTER  Cluster.
++  #
++  # P9K_KUBECONTEXT_CLOUD_* parameters are derived from P9K_KUBECONTEXT_CLUSTER. For example,
++  # if P9K_KUBECONTEXT_CLUSTER is "gke_my-account_us-east1-a_my-cluster-01":
++  #
++  #   - P9K_KUBECONTEXT_CLOUD_NAME=gke
++  #   - P9K_KUBECONTEXT_CLOUD_ACCOUNT=my-account
++  #   - P9K_KUBECONTEXT_CLOUD_ZONE=us-east1-a
++  #   - P9K_KUBECONTEXT_CLOUD_CLUSTER=my-cluster-01
++  #
++  # If P9K_KUBECONTEXT_CLUSTER is "arn:aws:eks:us-east-1:123456789012:cluster/my-cluster-01":
++  #
++  #   - P9K_KUBECONTEXT_CLOUD_NAME=eks
++  #   - P9K_KUBECONTEXT_CLOUD_ACCOUNT=123456789012
++  #   - P9K_KUBECONTEXT_CLOUD_ZONE=us-east-1
++  #   - P9K_KUBECONTEXT_CLOUD_CLUSTER=my-cluster-01
++  typeset -g POWERLEVEL9K_KUBECONTEXT_DEFAULT_CONTENT_EXPANSION=
++  # Show P9K_KUBECONTEXT_CLOUD_CLUSTER if it's not empty and fall back to P9K_KUBECONTEXT_NAME.
++  POWERLEVEL9K_KUBECONTEXT_DEFAULT_CONTENT_EXPANSION+='${P9K_KUBECONTEXT_CLOUD_CLUSTER:-${P9K_KUBECONTEXT_NAME}}'
++  # Append the current context's namespace if it's not "default".
++  POWERLEVEL9K_KUBECONTEXT_DEFAULT_CONTENT_EXPANSION+='${${:-/$P9K_KUBECONTEXT_NAMESPACE}:#/default}'
++
++  # Custom prefix.
++  typeset -g POWERLEVEL9K_KUBECONTEXT_PREFIX='%244Fat '
++
++  #[ aws: aws profile (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html) ]#
++  # Show aws only when the command you are typing invokes one of these tools.
++  # Tip: Remove the next line to always show aws.
++  typeset -g POWERLEVEL9K_AWS_SHOW_ON_COMMAND='aws|awless|cdk|terraform|pulumi|terragrunt'
++
++  # POWERLEVEL9K_AWS_CLASSES is an array with even number of elements. The first element
++  # in each pair defines a pattern against which the current AWS profile gets matched.
++  # More specifically, it's P9K_CONTENT prior to the application of context expansion (see below)
++  # that gets matched. If you unset all POWERLEVEL9K_AWS_*CONTENT_EXPANSION parameters,
++  # you'll see this value in your prompt. The second element of each pair in
++  # POWERLEVEL9K_AWS_CLASSES defines the profile class. Patterns are tried in order. The
++  # first match wins.
++  #
++  # For example, given these settings:
++  #
++  #   typeset -g POWERLEVEL9K_AWS_CLASSES=(
++  #     '*prod*'  PROD
++  #     '*test*'  TEST
++  #     '*'       DEFAULT)
++  #
++  # If your current AWS profile is "company_test", its class is TEST
++  # because "company_test" doesn't match the pattern '*prod*' but does match '*test*'.
++  #
++  # You can define different colors, icons and content expansions for different classes:
++  #
++  #   typeset -g POWERLEVEL9K_AWS_TEST_FOREGROUND=28
++  #   typeset -g POWERLEVEL9K_AWS_TEST_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_AWS_TEST_CONTENT_EXPANSION='> ${P9K_CONTENT} <'
++  typeset -g POWERLEVEL9K_AWS_CLASSES=(
++      # '*prod*'  PROD    # These values are examples that are unlikely
++      # '*test*'  TEST    # to match your needs. Customize them as needed.
++      '*'       DEFAULT)
++  typeset -g POWERLEVEL9K_AWS_DEFAULT_FOREGROUND=208
++  # typeset -g POWERLEVEL9K_AWS_DEFAULT_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  # AWS segment format. The following parameters are available within the expansion.
++  #
++  # - P9K_AWS_PROFILE  The name of the current AWS profile.
++  # - P9K_AWS_REGION   The region associated with the current AWS profile.
++  typeset -g POWERLEVEL9K_AWS_CONTENT_EXPANSION='${P9K_AWS_PROFILE//\%/%%}${P9K_AWS_REGION:+ ${P9K_AWS_REGION//\%/%%}}'
++
++  #[ aws_eb_env: aws elastic beanstalk environment (https://aws.amazon.com/elasticbeanstalk/) ]#
++  # AWS Elastic Beanstalk environment color.
++  typeset -g POWERLEVEL9K_AWS_EB_ENV_FOREGROUND=70
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_AWS_EB_ENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##########[ azure: azure account name (https://docs.microsoft.com/en-us/cli/azure) ]##########
++  # Show azure only when the command you are typing invokes one of these tools.
++  # Tip: Remove the next line to always show azure.
++  typeset -g POWERLEVEL9K_AZURE_SHOW_ON_COMMAND='az|terraform|pulumi|terragrunt'
++
++  # POWERLEVEL9K_AZURE_CLASSES is an array with even number of elements. The first element
++  # in each pair defines a pattern against which the current azure account name gets matched.
++  # More specifically, it's P9K_CONTENT prior to the application of context expansion (see below)
++  # that gets matched. If you unset all POWERLEVEL9K_AZURE_*CONTENT_EXPANSION parameters,
++  # you'll see this value in your prompt. The second element of each pair in
++  # POWERLEVEL9K_AZURE_CLASSES defines the account class. Patterns are tried in order. The
++  # first match wins.
++  #
++  # For example, given these settings:
++  #
++  #   typeset -g POWERLEVEL9K_AZURE_CLASSES=(
++  #     '*prod*'  PROD
++  #     '*test*'  TEST
++  #     '*'       OTHER)
++  #
++  # If your current azure account is "company_test", its class is TEST because "company_test"
++  # doesn't match the pattern '*prod*' but does match '*test*'.
++  #
++  # You can define different colors, icons and content expansions for different classes:
++  #
++  #   typeset -g POWERLEVEL9K_AZURE_TEST_FOREGROUND=28
++  #   typeset -g POWERLEVEL9K_AZURE_TEST_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_AZURE_TEST_CONTENT_EXPANSION='> ${P9K_CONTENT} <'
++  typeset -g POWERLEVEL9K_AZURE_CLASSES=(
++      # '*prod*'  PROD    # These values are examples that are unlikely
++      # '*test*'  TEST    # to match your needs. Customize them as needed.
++      '*'         OTHER)
++
++  # Azure account name color.
++  typeset -g POWERLEVEL9K_AZURE_OTHER_FOREGROUND=32
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_AZURE_OTHER_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ##########[ gcloud: google cloud account and project (https://cloud.google.com/) ]###########
++  # Show gcloud only when the command you are typing invokes one of these tools.
++  # Tip: Remove the next line to always show gcloud.
++  typeset -g POWERLEVEL9K_GCLOUD_SHOW_ON_COMMAND='gcloud|gcs|gsutil'
++   # Google cloud color.
++  typeset -g POWERLEVEL9K_GCLOUD_FOREGROUND=32
++
++  # Google cloud format. Change the value of POWERLEVEL9K_GCLOUD_PARTIAL_CONTENT_EXPANSION and/or
++  # POWERLEVEL9K_GCLOUD_COMPLETE_CONTENT_EXPANSION if the default is too verbose or not informative
++  # enough. You can use the following parameters in the expansions. Each of them corresponds to the
++  # output of `gcloud` tool.
++  #
++  #   Parameter                | Source
++  #   -------------------------|--------------------------------------------------------------------
++  #   P9K_GCLOUD_CONFIGURATION | gcloud config configurations list --format='value(name)'
++  #   P9K_GCLOUD_ACCOUNT       | gcloud config get-value account
++  #   P9K_GCLOUD_PROJECT_ID    | gcloud config get-value project
++  #   P9K_GCLOUD_PROJECT_NAME  | gcloud projects describe $P9K_GCLOUD_PROJECT_ID --format='value(name)'
++  #
++  # Note: ${VARIABLE//\%/%%} expands to ${VARIABLE} with all occurrences of '%' replaced with '%%'.
++  #
++  # Obtaining project name requires sending a request to Google servers. This can take a long time
++  # and even fail. When project name is unknown, P9K_GCLOUD_PROJECT_NAME is not set and gcloud
++  # prompt segment is in state PARTIAL. When project name gets known, P9K_GCLOUD_PROJECT_NAME gets
++  # set and gcloud prompt segment transitions to state COMPLETE.
++  #
++  # You can customize the format, icon and colors of gcloud segment separately for states PARTIAL
++  # and COMPLETE. You can also hide gcloud in state PARTIAL by setting
++  # POWERLEVEL9K_GCLOUD_PARTIAL_VISUAL_IDENTIFIER_EXPANSION and
++  # POWERLEVEL9K_GCLOUD_PARTIAL_CONTENT_EXPANSION to empty.
++  typeset -g POWERLEVEL9K_GCLOUD_PARTIAL_CONTENT_EXPANSION='${P9K_GCLOUD_PROJECT_ID//\%/%%}'
++  typeset -g POWERLEVEL9K_GCLOUD_COMPLETE_CONTENT_EXPANSION='${P9K_GCLOUD_PROJECT_NAME//\%/%%}'
++
++  # Send a request to Google (by means of `gcloud projects describe ...`) to obtain project name
++  # this often. Negative value disables periodic polling. In this mode project name is retrieved
++  # only when the current configuration, account or project id changes.
++  typeset -g POWERLEVEL9K_GCLOUD_REFRESH_PROJECT_NAME_SECONDS=60
++
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_GCLOUD_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #[ google_app_cred: google application credentials (https://cloud.google.com/docs/authentication/production) ]#
++  # Show google_app_cred only when the command you are typing invokes one of these tools.
++  # Tip: Remove the next line to always show google_app_cred.
++  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_SHOW_ON_COMMAND='terraform|pulumi|terragrunt'
++
++  # Google application credentials classes for the purpose of using different colors, icons and
++  # expansions with different credentials.
++  #
++  # POWERLEVEL9K_GOOGLE_APP_CRED_CLASSES is an array with even number of elements. The first
++  # element in each pair defines a pattern against which the current kubernetes context gets
++  # matched. More specifically, it's P9K_CONTENT prior to the application of context expansion
++  # (see below) that gets matched. If you unset all POWERLEVEL9K_GOOGLE_APP_CRED_*CONTENT_EXPANSION
++  # parameters, you'll see this value in your prompt. The second element of each pair in
++  # POWERLEVEL9K_GOOGLE_APP_CRED_CLASSES defines the context class. Patterns are tried in order.
++  # The first match wins.
++  #
++  # For example, given these settings:
++  #
++  #   typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_CLASSES=(
++  #     '*:*prod*:*'  PROD
++  #     '*:*test*:*'  TEST
++  #     '*'           DEFAULT)
++  #
++  # If your current Google application credentials is "service_account deathray-testing x@y.com",
++  # its class is TEST because it doesn't match the pattern '* *prod* *' but does match '* *test* *'.
++  #
++  # You can define different colors, icons and content expansions for different classes:
++  #
++  #   typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_TEST_FOREGROUND=28
++  #   typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_TEST_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  #   typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_TEST_CONTENT_EXPANSION='$P9K_GOOGLE_APP_CRED_PROJECT_ID'
++  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_CLASSES=(
++      # '*:*prod*:*'  PROD    # These values are examples that are unlikely
++      # '*:*test*:*'  TEST    # to match your needs. Customize them as needed.
++      '*'             DEFAULT)
++  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_DEFAULT_FOREGROUND=32
++  # typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_DEFAULT_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  # Use POWERLEVEL9K_GOOGLE_APP_CRED_CONTENT_EXPANSION to specify the content displayed by
++  # google_app_cred segment. Parameter expansions are very flexible and fast, too. See reference:
++  # http://zsh.sourceforge.net/Doc/Release/Expansion.html#Parameter-Expansion.
++  #
++  # You can use the following parameters in the expansion. Each of them corresponds to one of the
++  # fields in the JSON file pointed to by GOOGLE_APPLICATION_CREDENTIALS.
++  #
++  #   Parameter                        | JSON key file field
++  #   ---------------------------------+---------------
++  #   P9K_GOOGLE_APP_CRED_TYPE         | type
++  #   P9K_GOOGLE_APP_CRED_PROJECT_ID   | project_id
++  #   P9K_GOOGLE_APP_CRED_CLIENT_EMAIL | client_email
++  #
++  # Note: ${VARIABLE//\%/%%} expands to ${VARIABLE} with all occurrences of '%' replaced by '%%'.
++  typeset -g POWERLEVEL9K_GOOGLE_APP_CRED_DEFAULT_CONTENT_EXPANSION='${P9K_GOOGLE_APP_CRED_PROJECT_ID//\%/%%}'
++
++  ##############[ toolbox: toolbox name (https://github.com/containers/toolbox) ]###############
++  # Toolbox color.
++  typeset -g POWERLEVEL9K_TOOLBOX_FOREGROUND=178
++  # Don't display the name of the toolbox if it matches fedora-toolbox-*.
++  typeset -g POWERLEVEL9K_TOOLBOX_CONTENT_EXPANSION='${P9K_TOOLBOX_NAME:#fedora-toolbox-*}'
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_TOOLBOX_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # Custom prefix.
++  typeset -g POWERLEVEL9K_TOOLBOX_PREFIX='%244Fin '
++
++  ###############################[ public_ip: public IP address ]###############################
++  # Public IP color.
++  typeset -g POWERLEVEL9K_PUBLIC_IP_FOREGROUND=94
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PUBLIC_IP_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ########################[ vpn_ip: virtual private network indicator ]#########################
++  # VPN IP color.
++  typeset -g POWERLEVEL9K_VPN_IP_FOREGROUND=81
++  # When on VPN, show just an icon without the IP address.
++  # Tip: To display the private IP address when on VPN, remove the next line.
++  typeset -g POWERLEVEL9K_VPN_IP_CONTENT_EXPANSION=
++  # Regular expression for the VPN network interface. Run `ifconfig` or `ip -4 a show` while on VPN
++  # to see the name of the interface.
++  typeset -g POWERLEVEL9K_VPN_IP_INTERFACE='(gpd|wg|(.*tun)|tailscale)[0-9]*|(zt.*)'
++  # If set to true, show one segment per matching network interface. If set to false, show only
++  # one segment corresponding to the first matching network interface.
++  # Tip: If you set it to true, you'll probably want to unset POWERLEVEL9K_VPN_IP_CONTENT_EXPANSION.
++  typeset -g POWERLEVEL9K_VPN_IP_SHOW_ALL=false
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_VPN_IP_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ###########[ ip: ip address and bandwidth usage for a specified network interface ]###########
++  # IP color.
++  typeset -g POWERLEVEL9K_IP_FOREGROUND=38
++  # The following parameters are accessible within the expansion:
++  #
++  #   Parameter             | Meaning
++  #   ----------------------+-------------------------------------------
++  #   P9K_IP_IP             | IP address
++  #   P9K_IP_INTERFACE      | network interface
++  #   P9K_IP_RX_BYTES       | total number of bytes received
++  #   P9K_IP_TX_BYTES       | total number of bytes sent
++  #   P9K_IP_RX_BYTES_DELTA | number of bytes received since last prompt
++  #   P9K_IP_TX_BYTES_DELTA | number of bytes sent since last prompt
++  #   P9K_IP_RX_RATE        | receive rate (since last prompt)
++  #   P9K_IP_TX_RATE        | send rate (since last prompt)
++  typeset -g POWERLEVEL9K_IP_CONTENT_EXPANSION='${P9K_IP_RX_RATE:+%70F⇣$P9K_IP_RX_RATE }${P9K_IP_TX_RATE:+%215F⇡$P9K_IP_TX_RATE }%38F$P9K_IP_IP'
++  # Show information for the first network interface whose name matches this regular expression.
++  # Run `ifconfig` or `ip -4 a show` to see the names of all network interfaces.
++  typeset -g POWERLEVEL9K_IP_INTERFACE='[ew].*'
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_IP_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  #########################[ proxy: system-wide http/https/ftp proxy ]##########################
++  # Proxy color.
++  typeset -g POWERLEVEL9K_PROXY_FOREGROUND=68
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_PROXY_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  ################################[ battery: internal battery ]#################################
++  # Show battery in red when it's below this level and not connected to power supply.
++  typeset -g POWERLEVEL9K_BATTERY_LOW_THRESHOLD=20
++  typeset -g POWERLEVEL9K_BATTERY_LOW_FOREGROUND=160
++  # Show battery in green when it's charging or fully charged.
++  typeset -g POWERLEVEL9K_BATTERY_{CHARGING,CHARGED}_FOREGROUND=70
++  # Show battery in yellow when it's discharging.
++  typeset -g POWERLEVEL9K_BATTERY_DISCONNECTED_FOREGROUND=178
++  # Battery pictograms going from low to high level of charge.
++  typeset -g POWERLEVEL9K_BATTERY_STAGES='\UF008E\UF007A\UF007B\UF007C\UF007D\UF007E\UF007F\UF0080\UF0081\UF0082\UF0079'
++  # Don't show the remaining time to charge/discharge.
++  typeset -g POWERLEVEL9K_BATTERY_VERBOSE=false
++
++  #####################################[ wifi: wifi speed ]#####################################
++  # WiFi color.
++  typeset -g POWERLEVEL9K_WIFI_FOREGROUND=68
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_WIFI_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  # Use different colors and icons depending on signal strength ($P9K_WIFI_BARS).
++  #
++  #   # Wifi colors and icons for different signal strength levels (low to high).
++  #   typeset -g my_wifi_fg=(68 68 68 68 68)                           # <-- change these values
++  #   typeset -g my_wifi_icon=('WiFi' 'WiFi' 'WiFi' 'WiFi' 'WiFi')     # <-- change these values
++  #
++  #   typeset -g POWERLEVEL9K_WIFI_CONTENT_EXPANSION='%F{${my_wifi_fg[P9K_WIFI_BARS+1]}}$P9K_WIFI_LAST_TX_RATE Mbps'
++  #   typeset -g POWERLEVEL9K_WIFI_VISUAL_IDENTIFIER_EXPANSION='%F{${my_wifi_fg[P9K_WIFI_BARS+1]}}${my_wifi_icon[P9K_WIFI_BARS+1]}'
++  #
++  # The following parameters are accessible within the expansions:
++  #
++  #   Parameter             | Meaning
++  #   ----------------------+---------------
++  #   P9K_WIFI_SSID         | service set identifier, a.k.a. network name
++  #   P9K_WIFI_LINK_AUTH    | authentication protocol such as "wpa2-psk" or "none"; empty if unknown
++  #   P9K_WIFI_LAST_TX_RATE | wireless transmit rate in megabits per second
++  #   P9K_WIFI_RSSI         | signal strength in dBm, from -120 to 0
++  #   P9K_WIFI_NOISE        | noise in dBm, from -120 to 0
++  #   P9K_WIFI_BARS         | signal strength in bars, from 0 to 4 (derived from P9K_WIFI_RSSI and P9K_WIFI_NOISE)
++
++  ####################################[ time: current time ]####################################
++  # Current time color.
++  typeset -g POWERLEVEL9K_TIME_FOREGROUND=66
++  # Format for the current time: 09:51:02. See `man 3 strftime`.
++  typeset -g POWERLEVEL9K_TIME_FORMAT='%D{%H:%M:%S}'
++  # If set to true, time will update when you hit enter. This way prompts for the past
++  # commands will contain the start times of their commands as opposed to the default
++  # behavior where they contain the end times of their preceding commands.
++  typeset -g POWERLEVEL9K_TIME_UPDATE_ON_COMMAND=false
++  # Custom icon.
++  # typeset -g POWERLEVEL9K_TIME_VISUAL_IDENTIFIER_EXPANSION='⭐'
++  # Custom prefix.
++  typeset -g POWERLEVEL9K_TIME_PREFIX='%244Fat '
++
++  # Example of a user-defined prompt segment. Function prompt_example will be called on every
++  # prompt if `example` prompt segment is added to POWERLEVEL9K_LEFT_PROMPT_ELEMENTS or
++  # POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS. It displays an icon and orange text greeting the user.
++  #
++  # Type `p10k help segment` for documentation and a more sophisticated example.
++  function prompt_example() {
++    p10k segment -f 208 -i '⭐' -t 'hello, %n'
++  }
++
++  # User-defined prompt segments may optionally provide an instant_prompt_* function. Its job
++  # is to generate the prompt segment for display in instant prompt. See
++  # https://github.com/romkatv/powerlevel10k#instant-prompt.
++  #
++  # Powerlevel10k will call instant_prompt_* at the same time as the regular prompt_* function
++  # and will record all `p10k segment` calls it makes. When displaying instant prompt, Powerlevel10k
++  # will replay these calls without actually calling instant_prompt_*. It is imperative that
++  # instant_prompt_* always makes the same `p10k segment` calls regardless of environment. If this
++  # rule is not observed, the content of instant prompt will be incorrect.
++  #
++  # Usually, you should either not define instant_prompt_* or simply call prompt_* from it. If
++  # instant_prompt_* is not defined for a segment, the segment won't be shown in instant prompt.
++  function instant_prompt_example() {
++    # Since prompt_example always makes the same `p10k segment` calls, we can call it from
++    # instant_prompt_example. This will give us the same `example` prompt segment in the instant
++    # and regular prompts.
++    prompt_example
++  }
++
++  # User-defined prompt segments can be customized the same way as built-in segments.
++  # typeset -g POWERLEVEL9K_EXAMPLE_FOREGROUND=208
++  # typeset -g POWERLEVEL9K_EXAMPLE_VISUAL_IDENTIFIER_EXPANSION='⭐'
++
++  # Transient prompt works similarly to the builtin transient_rprompt option. It trims down prompt
++  # when accepting a command line. Supported values:
++  #
++  #   - off:      Don't change prompt when accepting a command line.
++  #   - always:   Trim down prompt when accepting a command line.
++  #   - same-dir: Trim down prompt when accepting a command line unless this is the first command
++  #               typed after changing current working directory.
++  typeset -g POWERLEVEL9K_TRANSIENT_PROMPT=always
++
++  # Instant prompt mode.
++  #
++  #   - off:     Disable instant prompt. Choose this if you've tried instant prompt and found
++  #              it incompatible with your zsh configuration files.
++  #   - quiet:   Enable instant prompt and don't print warnings when detecting console output
++  #              during zsh initialization. Choose this if you've read and understood
++  #              https://github.com/romkatv/powerlevel10k#instant-prompt.
++  #   - verbose: Enable instant prompt and print a warning when detecting console output during
++  #              zsh initialization. Choose this if you've never tried instant prompt, haven't
++  #              seen the warning, or if you are unsure what this all means.
++  typeset -g POWERLEVEL9K_INSTANT_PROMPT=verbose
++
++  # Hot reload allows you to change POWERLEVEL9K options after Powerlevel10k has been initialized.
++  # For example, you can type POWERLEVEL9K_BACKGROUND=red and see your prompt turn red. Hot reload
++  # can slow down prompt by 1-2 milliseconds, so it's better to keep it turned off unless you
++  # really need it.
++  typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
++
++  # If p10k is already loaded, reload configuration.
++  # This works even with POWERLEVEL9K_DISABLE_HOT_RELOAD=true.
++  (( ! $+functions[p10k] )) || p10k reload
++}
++
++# Tell `p10k configure` which file it should overwrite.
++typeset -g POWERLEVEL9K_CONFIG_FILE=${${(%):-%x}:a}
++
++(( ${#p10k_config_opts} )) && setopt ${p10k_config_opts[@]}
++'builtin' 'unset' 'p10k_config_opts'
+diff --git a/stow/zsh/.zsh_aliases b/stow/zsh/.zsh_aliases
+new file mode 100644
+index 0000000..b58af60
+--- /dev/null
++++ b/stow/zsh/.zsh_aliases
+@@ -0,0 +1,224 @@
++# ==============================================================================
++#  TAHIRY'S ZSH ALIASES - 2026 EDITION 🚀
++#  Stack: Angular · NestJS · Flutter · Prisma · NX · Docker · Bun · pnpm
++# ==============================================================================
++
++# ── 0. PROFILING (uncomment to debug startup time) ────────────
++# zmodload zsh/zprof   # at the top of .zshrc
++# zprof               # at the bottom of .zshrc
++
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 1. SYSTEM & TOOLS 🛠️
++# ══════════════════════════════════════════════════════════════════════════════
++alias c='clear'
++alias q='exit'
++alias ll='ls -la'
++alias la='ls -A'
++alias l='ls -CF'
++alias ..='cd ..'
++alias ...='cd ../..'
++alias ....='cd ../../..'
++alias ~='cd ~'
++alias -- -='cd -'                     # return to previous directory
++
++alias nv='nvim .'
++alias v='nvim'
++alias grep='rg'                       # ripgrep > grep
++alias df='df -h'
++alias s='sudo '
++# Fast navigation (zoxide)
++alias cd='z'
++alias cdi='zi'                        # fzf interactive mode
++
++# Edit config
++alias zshc="nvim ~/.zshrc"
++alias ld="lazydocker"
++alias lg="lazygit"
++alias tb="taskbook"
++alias zsha="nvim ~/.zsh_aliases"
++alias reload='source ~/.zshrc && echo "🚀 Configuration reloaded!"'
++alias path='echo $PATH | tr ":" "\n" | nl'   # display PATH readably
++
++# System
++alias update='sys-update'
++alias upgrade='sys-upgrade'
++alias upall='sys-upgrade --all'
++alias clean-sys='sys-clean'
++alias mem='free -h'
++
++# Fixes
++alias brave-fix="rm -f ~/.config/BraveSoftware/Brave-Browser/SingletonLock ~/.config/BraveSoftware/Brave-Browser/SingletonCookie"
++alias fix-gpg='gpg --refresh-keys'
++
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 2. SERVICES 🐳
++# ══════════════════════════════════════════════════════════════════════════════
++alias pg-start='echo "🐘 Starting PostgreSQL..." && sudo systemctl start postgresql && echo "✅ PostgreSQL started"'
++alias pg-stop='echo "🐘 Stopping PostgreSQL..." && sudo systemctl stop postgresql && echo "✅ PostgreSQL stopped"'
++alias pg-status='echo "🐘 PostgreSQL status:" && sudo systemctl status postgresql'
++alias pg-restart='echo "🐘 Restarting PostgreSQL..." && sudo systemctl restart postgresql && echo "✅ PostgreSQL restarted"'
++alias pg-log='echo "🐘 Following PostgreSQL logs (Ctrl+C to exit)..." && sudo journalctl -u postgresql -f'
++
++alias mg-start='echo "🍃 Starting MongoDB..." && sudo systemctl start mongod && echo "✅ MongoDB started"'
++alias mg-stop='echo "🍃 Stopping MongoDB..." && sudo systemctl stop mongod && echo "✅ MongoDB stopped"'
++alias mg-status='echo "🍃 MongoDB status:" && sudo systemctl status mongod'
++
++alias re-start='echo "🔴 Starting Redis..." && sudo systemctl start redis-server && echo "✅ Redis started"'
++alias re-stop='echo "🔴 Stopping Redis..." && sudo systemctl stop redis-server && echo "✅ Redis stopped"'
++alias re-cli='echo "🔴 Connecting to Redis CLI..." && redis-cli'
++alias re-flush='echo "⚠️  Flushing all Redis data..." && redis-cli FLUSHALL && echo "🔴 Redis cleared"'
++
++alias dk-start='echo "🐳 Starting Docker..." && sudo systemctl start docker && echo "✅ Docker started"'
++alias dk-stop='echo "🐳 Stopping Docker..." && sudo systemctl stop docker && echo "✅ Docker stopped"'
++alias dk-status='echo "🐳 Docker status:" && sudo systemctl status docker'
++
++# Combos
++alias dev-up='echo "▶ Starting dev stack..." && pg-start && dk-start && re-start && echo "✅ Dev stack started"'
++alias dev-down='echo "■ Stopping dev stack..." && pg-stop && mg-stop && dk-stop && re-stop && echo "🛑 Dev stack stopped"'
++alias dev-break='dev-down && clean-sys && sudo shutdown now'
++
++# Ports
++alias kill3000='fuser -k 3000/tcp && echo "✅ Port 3000 freed"'
++alias kill4200='fuser -k 4200/tcp && echo "✅ Port 4200 freed"'
++alias kill8080='fuser -k 8080/tcp && echo "✅ Port 8080 freed"'
++kill-port() { echo "🔌 Killing port $1..."; fuser -k ${1}/tcp && echo "✅ Port $1 freed"; }
++
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 📋 CLIPBOARD HISTORY (Wayland — wl-clipboard)
++# ══════════════════════════════════════════════════════════════════════════════
++# Functions moved to scripts/zsh_functions.zsh
++alias clip='echo "📋 Current clipboard:" && wl-paste 2>/dev/null || echo "❌ Empty"'
++alias clip-clear='rm -f "$HOME/.cache/clipboard_history.log" && echo "🗑️  Clipboard history cleared."'
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 3. RUNTIME & PACKAGE MANAGERS ⚡
++# ══════════════════════════════════════════════════════════════════════════════
++# Bun
++alias br='bun run'
++alias brd='bun run dev'
++alias brb='bun run build'
++alias brt='bun run test'
++alias bx='bunx'
++alias brm='bun remove'
++
++# pnpm
++alias p='pnpm'
++alias pi='pnpm install'
++alias pa='pnpm add'
++alias pad='pnpm add -D'
++alias prm='pnpm remove'
++alias pe='pnpm exec'
++alias px='pnpm dlx'
++alias pclean='rm -rf node_modules pnpm-lock.yaml && pnpm install'
++alias pup='pnpm update --interactive --latest'
++alias pwhy='pnpm why'                 # why is this package installed?
++
++
++
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 4. AI & LLM 🤖
++# ══════════════════════════════════════════════════════════════════════════════
++alias gg='gemini'
++alias gpt='codex'
++
++# ══════════════════════════════════════════════════════════════════════════════
++# 5. UTILS & PRODUCTIVITY 🌳
++# ══════════════════════════════════════════════════════════════════════════════
++alias tree-pro='tree -L 10 -I "node_modules|build|dist|.dart_tool|.git|docs|ios|android|.next|.nx|.angular|coverage"'
++alias tree-src='tree -L 5 -I "node_modules|build|dist|.dart_tool|.git" --dirsfirst'
++
++# Network
++alias ping='ping -c 5'
++
++# Find quickly
++alias rgs='rg --type ts'             # ripgrep on TS files
++
++# GNOME Backup
++alias gnome-backup='~/dotfiles/scripts/gnome-dconf.sh'
++
++# ==============================================================================
++# ADVANCED FUNCTIONS
++# ==============================================================================
++
++alias count-ts='count-code ts'
++alias count-dart='count-code dart'
++alias count-html='count-code html'
++
++# Create folder and enter
++mkcd() { mkdir -p "$1" && cd "$1"; }
++
++alias Compress='compress'
++alias Extract='extract'
++
++# Quick backup of a file
++bak() { echo "💾 Backing up $1..."; cp "$1" "$1.bak.$(date +%Y%m%d_%H%M%S)" && echo "✅ Backup: $1.bak"; }
++
++# Find processes eating RAM
++topmem() { echo "🔍 Top RAM usage:"; ps aux --sort=-%mem | head -${1:-15}; }
++topcpu() { echo "🔍 Top CPU usage:"; ps aux --sort=-%cpu | head -${1:-15}; }
++
++# Show env variables from a .env
++dotenv-show() { echo "📄 Showing env variables from ${1:-.env}:"; cat ${1:-.env} | grep -v '^#' | grep -v '^$' | sort; }
++
++# Reload config without losing session
++alias reload-safe='exec zsh'
++
++
++# ==============================================================================
++# 🧩 OPTIONAL MODULES (Sourced if enabled during installation)
++# ==============================================================================
++safe_source() {
++  if [ -f "$1" ]; then
++    if zsh -n "$1" >/dev/null 2>&1; then
++      source "$1"
++    else
++      echo "⚠️ Syntax error in $1. File not sourced."
++    fi
++  fi
++}
++
++safe_source ~/.angular_aliases.zsh
++safe_source ~/.docker_aliases.zsh
++safe_source ~/.flutter_aliases.zsh
++safe_source ~/.nestjs_prisma_aliases.zsh
++safe_source ~/.git_aliases.zsh
++
++# ==============================================================================
++# CTRL+SHIFT+O — Dynamic directory jump with fzf (Task #10)
++# ==============================================================================
++_fzf_cd_widget() {
++  local selected
++  selected=$(find "${FZF_CD_BASE:-$HOME}" -maxdepth ${FZF_CD_DEPTH:-5} -type d \
++    -not -path '*/node_modules/*' \
++    -not -path '*/.git/*' \
++    -not -path '*/.dart_tool/*' \
++    -not -path '*/.angular/*' \
++    2>/dev/null | fzf --prompt='  Dir: ' --preview 'ls -la {}' --height=50% --reverse)
++  if [[ -n "$selected" ]]; then
++    BUFFER="cd \"$selected\""
++    zle accept-line
++  else
++    zle reset-prompt
++  fi
++}
++if command -v fzf >/dev/null 2>&1; then
++  zle -N _fzf_cd_widget
++  # Ctrl+Shift+O (terminal sends ^[[79;6u or \eO with many terms; bind both)
++  bindkey '^[o' _fzf_cd_widget          # Alt+O fallback
++  bindkey '^[[79;6u' _fzf_cd_widget     # Ctrl+Shift+O (kitty CSI u)
++  bindkey '^O' _fzf_cd_widget           # Ctrl+O common mapping
++fi
++
++# ==============================================================================
++# LOAD COMPLEX FUNCTIONS FROM SCRIPTS FOLDER
++# ==============================================================================
++safe_source ~/dotfiles/scripts/zsh_functions.zsh
++
++# ==============================================================================
++# END - Loaded successfully 🎉
++# ==============================================================================
++# echo "  🚀 Aliases Tahiry loaded — $(date +%H:%M)"
+diff --git a/stow/zsh/.zshrc b/stow/zsh/.zshrc
+new file mode 100644
+index 0000000..e27e76a
+--- /dev/null
++++ b/stow/zsh/.zshrc
+@@ -0,0 +1,73 @@
++# ==============================================================================
++# CONFIGURATION ZSH PRO 2026 - TAHIRY (Architect Edition)
++# ==============================================================================
++
++# 1. INSTANT PROMPT (Speed ⚡)
++if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
++  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
++fi
++
++# 2. SYSTEM ENV
++export TERM="xterm-256color"
++export COLORTERM="truecolor"
++export LANG="en_US.UTF-8"
++export PATH="$HOME/.local/bin:$PATH"
++
++# 3. PREZTO & PLUGINS
++[[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]] && source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
++
++if [ -f ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
++    source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
++    export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=8"
++    export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
++    bindkey '^ ' autosuggest-accept
++fi
++
++[[ -f ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
++
++
++# 5. LANGUAGE & RUNTIME
++# NVM
++export NVM_DIR="$HOME/.nvm"
++[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
++[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
++
++# PNPM
++export PNPM_HOME="$HOME/.local/share/pnpm"
++case ":$PATH:" in *":$PNPM_HOME:"*) ;; *) export PATH="$PNPM_HOME:$PATH" ;; esac
++
++# BUN
++export BUN_INSTALL="$HOME/.bun"
++export PATH="$BUN_INSTALL/bin:$PATH"
++[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
++
++# FLUTTER/ANDROID
++export FLUTTER_HOME="$HOME/development/flutter"
++export ANDROID_HOME="$HOME/Android/Sdk"
++export PATH="$PATH:$FLUTTER_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin"
++
++# 6. PRODUCTIVITY TOOLS
++if command -v ng >/dev/null; then source <(ng completion script); fi
++if command -v zoxide >/dev/null; then eval "$(zoxide init zsh)"; fi
++
++# 7. THEME
++[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
++[[ -f ~/powerlevel10k/powerlevel10k.zsh-theme ]] && source ~/powerlevel10k/powerlevel10k.zsh-theme
++
++# 8. TTY
++[[ -t 0 ]] && stty -ixon
++
++. "$HOME/.local/share/../bin/env"
++
++# 9. HISTORY
++HISTSIZE=100000
++SAVEHIST=100000
++HISTFILE=~/.zsh_history
++setopt INC_APPEND_HISTORY
++setopt SHARE_HISTORY
++
++# 10. ALIASES (loaded last — after all runtimes & tools are ready)
++[[ -f ~/.zsh_aliases ]] && source ~/.zsh_aliases
++
++# 11. LOCAL OVERRIDES (Private configs)
++[[ -f ~/.zsh_local ]] && source ~/.zsh_local

@@ -4,7 +4,7 @@
 # GNOME Dconf Backup & Restore
 # ==============================================================================
 
-BACKUP_DIR="$HOME/dotfiles/configs/gnome"
+BACKUP_DIR="$HOME/dotfiles/stow/gnome"
 mkdir -p "$BACKUP_DIR"
 
 echo "╔══════════════════════════════════════════════════╗"

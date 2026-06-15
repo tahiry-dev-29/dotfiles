@@ -30,7 +30,7 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
     echo "  🔄 Detecting OS and installing packages..."
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
-        sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip git-crypt
+        sudo apt-get install -y tree ripgrep zoxide fd-find psmisc curl wget unzip git-crypt stow
         
         # GitHub CLI for APT
         if ! command -v gh &> /dev/null; then
@@ -42,11 +42,11 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
             sudo apt-get install -y gh
         fi
     elif command -v brew &> /dev/null; then
-        brew install tree ripgrep zoxide fd psmisc curl wget unzip gh git-crypt
+        brew install tree ripgrep zoxide fd psmisc curl wget unzip gh git-crypt stow
     elif command -v pacman &> /dev/null; then
-        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip github-cli git-crypt
+        sudo pacman -Sy --noconfirm tree ripgrep zoxide fd psmisc curl wget unzip github-cli git-crypt stow
     else
-        echo "  ⚠️ Unsupported package manager. Please install tree, ripgrep, fd, and zoxide manually."
+        echo "  ⚠️ Unsupported package manager. Please install tree, ripgrep, fd, zoxide, and stow manually."
     fi
 
     # Install Bun
@@ -102,25 +102,15 @@ if [[ "$ans_font" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
     echo "  ✅ Fonts installed successfully!"
 fi
 
-# Function to safely create symlinks
-link_file() {
-    local src=$1
-    local dest=$2
-
-    if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then
-        echo "✅ Already linked: $dest"
-        return
-    fi
-
-    if [ -e "$dest" ] || [ -d "$dest" ]; then
-        local backup_name="${dest}.${CURRENT_DATE}.bak"
-        echo "📦 Backing up $dest to $backup_name"
-        mv "$dest" "$backup_name"
-    fi
-
-    echo "🔗 Symlinking: $dest -> $src"
-    mkdir -p "$(dirname "$dest")"
-    ln -sf "$src" "$dest"
+# Function to stow applications
+stow_app() {
+    local app=$1
+    local target=$2
+    
+    echo "🔗 Stowing: $app"
+    stow -t "$target" -d "$DOTFILES_DIR/stow" "$app" || {
+        echo "⚠️  Stow encountered conflicts for $app. Please resolve them and re-run, or use stow --adopt."
+    }
 }
 
 # 4. Interactive Menu
@@ -148,8 +138,8 @@ mkdir -p "$CONFIG_DIR"
 
 # Standard Apps
 for app in "nvim" "trunk" "lazygit" "lazydocker" "fish" "ghostty"; do
-    if [ "${wants[$app]}" = true ] && [ -d "$DOTFILES_DIR/configs/$app" ]; then
-        link_file "$DOTFILES_DIR/configs/$app" "$CONFIG_DIR/$app"
+    if [ "${wants[$app]}" = true ] && [ -d "$DOTFILES_DIR/stow/$app" ]; then
+        stow_app "$app" "$HOME"
     fi
 done
 
@@ -192,35 +182,33 @@ if [ "${wants[zsh]}" = true ]; then
         echo "  ✅ Zsh plugins installed/updated successfully!"
     fi
 
-    [ -f "$DOTFILES_DIR/configs/zshrc" ] && link_file "$DOTFILES_DIR/configs/zshrc" "$HOME/.zshrc"
-    [ -f "$DOTFILES_DIR/configs/zsh_aliases" ] && link_file "$DOTFILES_DIR/configs/zsh_aliases" "$HOME/.zsh_aliases"
-    [ -f "$DOTFILES_DIR/configs/p10k.zsh" ] && link_file "$DOTFILES_DIR/configs/p10k.zsh" "$HOME/.p10k.zsh"
+    [ -d "$DOTFILES_DIR/stow/zsh" ] && stow_app "zsh" "$HOME"
 
     echo ""
     echo "🧩 ZSH Optional Modules"
     read -p "  [?] Do you want to enable the Angular & Nx Aliases? [y/N] " ans_angular
     if [[ "$ans_angular" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        link_file "$DOTFILES_DIR/configs/optional/angular_aliases.zsh" "$HOME/.angular_aliases.zsh"
+        [ -f "$DOTFILES_DIR/stow/zsh-optional/.angular_aliases.zsh" ] && ln -sf "$DOTFILES_DIR/stow/zsh-optional/.angular_aliases.zsh" "$HOME/.angular_aliases.zsh"
     fi
 
     read -p "  [?] Do you want to enable the Docker Aliases? [y/N] " ans_docker
     if [[ "$ans_docker" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        link_file "$DOTFILES_DIR/configs/optional/docker_aliases.zsh" "$HOME/.docker_aliases.zsh"
+        [ -f "$DOTFILES_DIR/stow/zsh-optional/.docker_aliases.zsh" ] && ln -sf "$DOTFILES_DIR/stow/zsh-optional/.docker_aliases.zsh" "$HOME/.docker_aliases.zsh"
     fi
 
     read -p "  [?] Do you want to enable the Flutter Aliases? [y/N] " ans_flutter
     if [[ "$ans_flutter" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        link_file "$DOTFILES_DIR/configs/optional/flutter_aliases.zsh" "$HOME/.flutter_aliases.zsh"
+        [ -f "$DOTFILES_DIR/stow/zsh-optional/.flutter_aliases.zsh" ] && ln -sf "$DOTFILES_DIR/stow/zsh-optional/.flutter_aliases.zsh" "$HOME/.flutter_aliases.zsh"
     fi
 
     read -p "  [?] Do you want to enable the NestJS & Prisma Aliases? [y/N] " ans_nestjs
     if [[ "$ans_nestjs" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        link_file "$DOTFILES_DIR/configs/optional/nestjs_prisma_aliases.zsh" "$HOME/.nestjs_prisma_aliases.zsh"
+        [ -f "$DOTFILES_DIR/stow/zsh-optional/.nestjs_prisma_aliases.zsh" ] && ln -sf "$DOTFILES_DIR/stow/zsh-optional/.nestjs_prisma_aliases.zsh" "$HOME/.nestjs_prisma_aliases.zsh"
     fi
 
     read -p "  [?] Do you want to enable the Git & GitHub CLI Aliases? [y/N] " ans_git
     if [[ "$ans_git" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        link_file "$DOTFILES_DIR/configs/optional/git_aliases.zsh" "$HOME/.git_aliases.zsh"
+        [ -f "$DOTFILES_DIR/stow/zsh-optional/.git_aliases.zsh" ] && ln -sf "$DOTFILES_DIR/stow/zsh-optional/.git_aliases.zsh" "$HOME/.git_aliases.zsh"
     fi
 fi
 
