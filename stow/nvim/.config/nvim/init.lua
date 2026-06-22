@@ -60,6 +60,7 @@ vim.schedule(function()
   map({"n", "i", "v"}, "<C-S-p>", "<cmd>Telescope commands<CR>", { desc = "Command Palette" })
   map("n", "<C-f>", "<cmd>Telescope live_grep<CR>", { desc = "Search Project" })
   map({"n", "i", "v"}, "<C-S-f>", "<cmd>Telescope live_grep<CR>", { desc = "Search Project" })
+  map("n", "<leader>gw", function() require("telescope").extensions.git_worktree.git_worktrees() end, { desc = "Chercher et basculer de Git Worktree" })
   map("n", "<C-s>", "<cmd>w<CR>", { desc = "Save" })
   map("i", "<C-s>", "<cmd>w<CR><ESC>", { desc = "Save" })
 

@@ -25,11 +25,10 @@ keybind = ctrl+shift+a=toggle_tab_overview
 theme = Violet Dark
 
 window-decoration = false
-window-show-tab-bar = never
 background-opacity = 0.97
 background-blur-radius = 20
 font-family = "JetBrains Mono"
-font-size = 11
+font-size = 12
 cursor-style = block
 cursor-style-blink = true
 # gtk-tabs-location = top
