@@ -2,7 +2,7 @@
 # Remove the "dark:" prefix which causes errors
 theme = catppuccin-mocha
 font-family = "JetBrains Mono"
-font-size = 11
+font-size = 12
 
 # --- Curseur ---
 # Le champ exact est 'cursor-style-blink'
@@ -20,6 +20,7 @@ background-blur-radius = 20
 
 # --- Interface Linux ---
 gtk-tabs-location = top
+gtk-custom-css = ./ghostty-custom.css
 
 # --- Raccourcis (Multiplexage) ---
 keybind = ctrl+shift+f=unbind
