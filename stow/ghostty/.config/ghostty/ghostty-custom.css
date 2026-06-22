@@ -1,19 +1,56 @@
 headerbar {
-    /* Set minimal height for GTK headerbar */
-    min-height: 24px;
+    min-height: 28px;
     padding: 0;
     margin: 0;
+    background-color: #1e1e2e; /* Catppuccin Mocha Base */
+    border-bottom: 1px solid #313244; /* Surface0 */
+}
+
+tabbar {
+    background: transparent;
 }
 
 tabbar tabbox {
-    /* Compact tab container sizing */
     margin: 0;
     padding: 0;
-    min-height: 10px;
 }
 
 tabbar tabbox tab {
-    /* Remove padding inside individual tabs */
+    min-height: 28px;
+    padding: 0 16px;
     margin: 0;
+    border-radius: 0;
+    border: none;
+    border-top: 2px solid transparent;
+    background-color: transparent;
+    color: #a6adc8; /* Subtext0 */
+    font-weight: 500;
+    box-shadow: none;
+}
+
+tabbar tabbox tab:hover {
+    background-color: #313244; /* Surface0 */
+    color: #cdd6f4; /* Text */
+    box-shadow: none;
+}
+
+tabbar tabbox tab:checked {
+    background-color: #181825; /* Mantle */
+    color: #89b4fa; /* Blue accent */
+    border-top: 2px solid #89b4fa;
+    box-shadow: none;
+}
+
+tabbar tabbox tab button.close {
+    min-height: 16px;
+    min-width: 16px;
     padding: 0;
+    margin-left: 8px;
+    border-radius: 50%;
+    background: transparent;
+}
+
+tabbar tabbox tab button.close:hover {
+    background-color: #f38ba8; /* Red for close */
+    color: #11111b; /* Crust */
 }
