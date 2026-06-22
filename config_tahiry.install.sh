@@ -115,11 +115,10 @@ stow_app() {
 
 # 4. Interactive Menu
 echo ""
-echo "Please select the configurations you want to install:"
 echo "-----------------------------------------------"
 
 declare -A wants
-apps=("nvim" "trunk" "lazygit" "lazydocker" "zsh" "fish" "ghostty")
+apps=("nvim" "trunk" "lazygit" "lazydocker" "zsh" "fish" "ghostty" "eslint")
 
 for app in "${apps[@]}"; do
     read -p "  [?] Install $app ? [Y/n] " response
@@ -137,7 +136,7 @@ echo "🚀 Applying configurations..."
 mkdir -p "$CONFIG_DIR"
 
 # Standard Apps
-for app in "nvim" "trunk" "lazygit" "lazydocker" "fish" "ghostty"; do
+for app in "nvim" "trunk" "lazygit" "lazydocker" "fish" "ghostty" "eslint"; do
     if [ "${wants[$app]}" = true ] && [ -d "$DOTFILES_DIR/stow/$app" ]; then
         stow_app "$app" "$HOME"
     fi

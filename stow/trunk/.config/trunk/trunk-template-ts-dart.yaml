@@ -18,7 +18,7 @@ runtimes:
 lint:
   enabled:
     - prettier@3.8.3       # TS/JS/JSON/CSS formatter
-    - eslint@8.57.1        # TypeScript linter
+    - eslint@8.57.1        # TypeScript linter (Use eslint.template.json for 'one file = one class' rule)
     - git-diff-check       # Git whitespace checks
     - markdownlint
     - dart@3.8.1           # Dart/Flutter analyzer & formatter
