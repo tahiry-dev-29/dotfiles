@@ -34,10 +34,11 @@ tabbar tabbox tab:hover {
     color: #cdd6f4; /* Text */
 }
 
-tabbar tabbox tab:checked {
-    background-color: #181825; /* Mantle */
+tabbar tabbox tab:checked,
+tabbar tabbox tab:selected {
+    background-color: #11111b; /* Crust (darker to stand out) */
     color: #89b4fa; /* Blue accent */
-    border-top: 2px solid #89b4fa;
+    box-shadow: inset 0 2px 0 0 #89b4fa; /* Safe GTK border */
 }
 
 tabbar tabbox tab button.close {
