@@ -40,6 +40,10 @@ _divider_end() { echo -e "${CYAN}╚══════════════�
 
 _confirm() {
   local prompt="$1"
+  if [[ "${GWT_AUTO_YES:-false}" == "true" ]]; then
+    printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}y (auto)\n"
+    return 0
+  fi
   printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}"
   read -r reply
   [[ "$reply" =~ ^[yY]$ ]]
@@ -67,6 +71,7 @@ usage() {
   echo -e "  ${GREEN}cleanup${RESET} <path> [merge-strategy]  Merge PR, remove worktree, pull main"
   echo ""
   echo -e "  ${CYAN}Options:${RESET}"
+  echo -e "    -y, --yes             Skip all confirmation prompts (auto-yes)"
   echo -e "    GWT_LOG_FILE=<path>   Custom log file (default: ~/.cache/git-worktree-auto.log)"
   echo ""
   echo -e "  ${CYAN}Examples:${RESET}"
@@ -78,7 +83,7 @@ usage() {
 
 # ── CMD: create ───────────────────────────────────────────────────────────────
 cmd_create() {
-  local wt_path="${1:-}" branch="${2:-}" base="${3:-main}"
+  local wt_path="${1:-}" branch="${2:-}" base="${3:-}"
   if [[ -z "$wt_path" || -z "$branch" ]]; then
     log_error "Missing parameters for worktree creation."
     echo -e "${YELLOW}💡 Tutorial: How to create a worktree?${RESET}"
@@ -96,6 +101,12 @@ cmd_create() {
   local src_root
   src_root=$(_require_git_root)
 
+  if [[ -z "$base" ]]; then
+    if git show-ref --verify --quiet refs/heads/main; then base="main"
+    elif git show-ref --verify --quiet refs/heads/master; then base="master"
+    else base=$(git config --get init.defaultBranch || echo "main"); fi
+  fi
+
   _divider
   echo -e "${CYAN}║  🌿 Git Worktree — Create                          ║${RESET}"
   echo -e "${CYAN}╠══════════════════════════════════════════════════════╣${RESET}"
@@ -109,12 +120,17 @@ cmd_create() {
 
   # Step 1: Sync base branch
   log_step "Syncing base branch: $base"
-  git checkout "$base" && git pull origin "$base"
-  log_success "Base branch up to date."
+  git checkout "$base" 2>/dev/null || log_warn "Base branch '$base' not checked out properly."
+  git pull origin "$base" 2>/dev/null || log_warn "Could not pull from origin (offline or no remote). Continuing..."
 
   # Step 2: Create worktree
   log_step "Creating worktree at $wt_path on branch $branch..."
-  git worktree add "$wt_path" -b "$branch" "$base"
+  if git show-ref --verify --quiet "refs/heads/$branch"; then
+    log_warn "Branch '$branch' already exists. Using existing branch."
+    git worktree add "$wt_path" "$branch"
+  else
+    git worktree add "$wt_path" -b "$branch" "$base"
+  fi
   log_success "Worktree created."
 
   # Step 3: Copy .env files
@@ -141,8 +157,9 @@ cmd_create() {
 
   log_success "Worktree ready → cd $wt_path"
 
-  if _confirm "cd into $wt_path now?"; then
+  if _confirm "cd into $wt_path now? (Will start a nested shell)"; then
     cd "$wt_path" || exit 1
+    log_info "Type 'exit' when done to return to your previous directory."
     exec "${SHELL:-zsh}"
   fi
 }
@@ -167,16 +184,38 @@ cmd_list() {
 cmd_remove() {
   local wt_path="${1:-}"
   if [[ -z "$wt_path" ]]; then
-    log_error "Usage: $0 remove <path>"
+    log_error "Usage: $0 remove <path_or_branch>"
     exit 1
   fi
   _require_git_root > /dev/null
+
+  # Resolve branch name to path if it's not a directory
+  if [[ ! -d "$wt_path" ]]; then
+    local branch_path
+    branch_path=$(git worktree list --porcelain | awk -v br="refs/heads/$wt_path" '
+      /^worktree/ { wt=$2 }
+      /^branch/ { if ($2 == br) print wt }
+    ')
+    if [[ -n "$branch_path" ]]; then
+      log_info "Resolved branch '$wt_path' to worktree path: $branch_path"
+      wt_path="$branch_path"
+    fi
+  fi
+
+  local wt_branch
+  wt_branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
 
   log_warn "This will remove worktree: $wt_path"
   _confirm "Confirm removal?" || { log_warn "Aborted."; exit 0; }
 
   log_step "Removing worktree $wt_path..."
-  git worktree remove "$wt_path" --force && log_success "Worktree removed." || log_error "Failed to remove worktree."
+  git worktree remove "$wt_path" --force && log_success "Worktree removed." || { log_error "Failed to remove worktree."; exit 1; }
+
+  if [[ -n "$wt_branch" && "$wt_branch" != "main" && "$wt_branch" != "master" ]]; then
+    if _confirm "Delete the associated branch '$wt_branch' as well?"; then
+      git branch -D "$wt_branch" && log_success "Branch $wt_branch deleted." || log_warn "Failed to delete branch."
+    fi
+  fi
 }
 
 # ── CMD: pr-flow ──────────────────────────────────────────────────────────────
@@ -263,6 +302,18 @@ cmd_cleanup() {
 }
 
 # ── Main dispatch ─────────────────────────────────────────────────────────────
+
+GWT_AUTO_YES=false
+new_args=()
+for arg in "$@"; do
+  if [[ "$arg" == "-y" || "$arg" == "--yes" ]]; then
+    GWT_AUTO_YES=true
+  else
+    new_args+=("$arg")
+  fi
+done
+set -- "${new_args[@]}"
+
 case "${1:-}" in
   create)   shift; cmd_create  "$@" ;;
   list)     shift; cmd_list    "$@" ;;
