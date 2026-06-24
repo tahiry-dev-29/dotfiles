@@ -122,7 +122,6 @@ alias pwhy='pnpm why'                 # why is this package installed?
 # ══════════════════════════════════════════════════════════════════════════════
 # 4. AI & LLM 🤖
 # ══════════════════════════════════════════════════════════════════════════════
-alias gg='gemini'
 alias gpt='codex --ask-for-approval never --sandbox danger-full-access'
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -139,6 +138,10 @@ alias rgs='rg --type ts'             # ripgrep on TS files
 
 # GNOME Backup
 alias gnome-backup='~/dotfiles/scripts/gnome-dconf.sh'
+
+# Generate random keys
+rand-key() { echo "🔑 Base64 Key ($1 bytes):"; openssl rand -base64 ${1:-32}; }
+rand-hex() { echo "🔑 Hex Key ($1 bytes):"; openssl rand -hex ${1:-32}; }
 
 # ==============================================================================
 # ADVANCED FUNCTIONS

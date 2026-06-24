@@ -128,7 +128,7 @@ cmd_create() {
     cp "$env_file" "$dest"
     log_info "Copied: $rel"
     envs_copied=$((envs_copied + 1))
-  done < <(find "$src_root" -maxdepth 4 -name '.env' -not -path '*/node_modules/*' -print0 2>/dev/null)
+  done < <(find "$src_root" -maxdepth 4 -name '.env*' -not -path '*/node_modules/*' -print0 2>/dev/null)
   log_success "$envs_copied .env file(s) copied."
 
   # Step 4: pnpm install
@@ -140,6 +140,11 @@ cmd_create() {
   fi
 
   log_success "Worktree ready → cd $wt_path"
+
+  if _confirm "cd into $wt_path now?"; then
+    cd "$wt_path" || exit 1
+    exec "${SHELL:-zsh}"
+  fi
 }
 
 # ── CMD: list ─────────────────────────────────────────────────────────────────
