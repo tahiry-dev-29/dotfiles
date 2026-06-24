@@ -141,7 +141,7 @@ cmd_create() {
     rel=$(realpath --relative-to="$src_root" "$env_file")
     dest="$wt_path/$rel"
     mkdir -p "$(dirname "$dest")"
-    cp "$env_file" "$dest"
+    cp -d "$env_file" "$dest"
     log_info "Copied: $rel"
     envs_copied=$((envs_copied + 1))
   done < <(find "$src_root" -maxdepth 4 -name '.env*' -not -path '*/node_modules/*' -print0 2>/dev/null)
