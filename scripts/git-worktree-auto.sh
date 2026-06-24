@@ -80,7 +80,16 @@ usage() {
 cmd_create() {
   local wt_path="${1:-}" branch="${2:-}" base="${3:-main}"
   if [[ -z "$wt_path" || -z "$branch" ]]; then
-    log_error "Usage: $0 create <path> <branch> [base]"
+    log_error "Missing parameters for worktree creation."
+    echo -e "${YELLOW}💡 Tutorial: How to create a worktree?${RESET}"
+    echo -e "You must provide the ${BOLD}directory path${RESET} (where to create it) AND the ${BOLD}branch name${RESET}."
+    echo ""
+    echo -e "👉 ${CYAN}Example using the alias:${RESET}"
+    echo -e "   gwt-new ../pricing-engine feature/pricing_engine"
+    echo ""
+    echo -e "👉 ${CYAN}Example using the full script:${RESET}"
+    echo -e "   $0 create ../pricing-engine feature/pricing_engine [base]"
+    echo ""
     exit 1
   fi
 
