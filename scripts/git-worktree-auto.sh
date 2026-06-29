@@ -138,7 +138,7 @@ cmd_create() {
   local envs_copied=0
   while IFS= read -r -d '' env_file; do
     local rel dest
-    rel=$(realpath --relative-to="$src_root" "$env_file")
+    rel="${env_file#$src_root/}"
     dest="$wt_path/$rel"
     mkdir -p "$(dirname "$dest")"
     cp -d "$env_file" "$dest"
