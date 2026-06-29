@@ -103,6 +103,7 @@ alias brb='bun run build'
 alias brt='bun run test'
 alias bx='bunx'
 alias brm='bun remove'
+alias check-infra="bun ~/dotfiles/scripts/check-architecture.ts"
 
 # pnpm
 alias p='pnpm'

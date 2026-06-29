@@ -103,8 +103,14 @@ vim.schedule(function()
   -- TRUNK (TUI Diagnostic)
   map("n", "<C-t>", function()
     local Terminal = require("toggleterm.terminal").Terminal
+    local branch = vim.fn.system("git rev-parse --abbrev-ref HEAD 2>/dev/null"):gsub("%s+", "")
+    local cmd = "trunk check --show-existing"
+    if branch == "main" or branch == "master" then
+      cmd = "trunk check --all --show-existing"
+    end
+
     local trunk_tui = Terminal:new({ 
-      cmd = "trunk check --show-existing", 
+      cmd = cmd, 
       hidden = true, 
       direction = "float",
       close_on_exit = false,
@@ -116,6 +122,22 @@ vim.schedule(function()
     })
     trunk_tui:toggle()
   end, { desc = "Trunk UI Toggle" })
+
+  -- Dedicated shortcut to force check all files
+  map("n", "<leader>ta", function()
+    local Terminal = require("toggleterm.terminal").Terminal
+    local trunk_tui = Terminal:new({ 
+      cmd = "trunk check --all --show-existing", 
+      hidden = true, 
+      direction = "float",
+      close_on_exit = false,
+      float_opts = { border = "double" },
+      on_open = function(term)
+        vim.api.nvim_buf_set_keymap(term.bufnr, "n", "q", "<cmd>close<CR>", {noremap = true, silent = true})
+      end,
+    })
+    trunk_tui:toggle()
+  end, { desc = "Trunk Check All" })
 
   -- EMERGENCY : Force close current buffer (useful if stuck)
   map("n", "<C-k>", "<cmd>bd!<CR>", { desc = "Force Close Buffer" })
