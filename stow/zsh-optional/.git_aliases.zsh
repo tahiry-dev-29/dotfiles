@@ -70,6 +70,11 @@ alias gwt-rm='bash ~/dotfiles/scripts/git-worktree-auto.sh remove'
 alias gwt-pr='bash ~/dotfiles/scripts/git-worktree-auto.sh pr-flow'
 alias gwt-clean='bash ~/dotfiles/scripts/git-worktree-auto.sh cleanup'
 
+# Structural Conventional Commit automation
+alias gac='bash ~/dotfiles/scripts/git-auto-commit.sh'
+alias gac-dry='bash ~/dotfiles/scripts/git-auto-commit.sh --dry-run'
+alias gac-np='bash ~/dotfiles/scripts/git-auto-commit.sh --no-push'
+
 # Find who wrote what
 gwho() { git log --follow -p -- $1; }
 galias() { git config --get-regexp alias; }
