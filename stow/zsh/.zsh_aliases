@@ -57,9 +57,15 @@ alias fix-gpg='gpg --refresh-keys'
 # ══════════════════════════════════════════════════════════════════════════════
 alias pg-start='echo "🐘 Starting PostgreSQL..." && sudo systemctl start postgresql && echo "✅ PostgreSQL started"'
 alias pg-stop='echo "🐘 Stopping PostgreSQL..." && sudo systemctl stop postgresql && echo "✅ PostgreSQL stopped"'
+alias start-sql='echo "🐘 Starting SQL..." && sudo systemctl start postgresql && echo "✅ SQL started"'
+alias stop-sql='echo "🐘 Stopping SQL..." && sudo systemctl stop postgresql && echo "✅ SQL stopped"'
 alias pg-status='echo "🐘 PostgreSQL status:" && sudo systemctl status postgresql'
 alias pg-restart='echo "🐘 Restarting PostgreSQL..." && sudo systemctl restart postgresql && echo "✅ PostgreSQL restarted"'
 alias pg-log='echo "🐘 Following PostgreSQL logs (Ctrl+C to exit)..." && sudo journalctl -u postgresql -f'
+
+alias my-start='echo "🐬 Starting MySQL..." && sudo systemctl start mysql && echo "✅ MySQL started"'
+alias my-stop='echo "🐬 Stopping MySQL..." && sudo systemctl stop mysql && echo "✅ MySQL stopped"'
+alias my-status='echo "🐬 MySQL status:" && sudo systemctl status mysql'
 
 alias mg-start='echo "🍃 Starting MongoDB..." && sudo systemctl start mongod && echo "✅ MongoDB started"'
 alias mg-stop='echo "🍃 Stopping MongoDB..." && sudo systemctl stop mongod && echo "✅ MongoDB stopped"'

@@ -90,6 +90,7 @@ function dev-status() {
     printf "║ %-11s ║ %-8s ║ %-12s ║\n" "$name" "$svc_status" "$port"
   }
   _svc_row "PostgreSQL" "postgresql" "5432"
+  _svc_row "MySQL" "mysql" "3306"
   _svc_row "MongoDB" "mongod" "27017"
   _svc_row "Docker" "docker" "daemon"
   _svc_row "Redis" "redis-server" "6379"
