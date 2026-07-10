@@ -104,9 +104,9 @@ vim.schedule(function()
   map("n", "<C-t>", function()
     local Terminal = require("toggleterm.terminal").Terminal
     local branch = vim.fn.system("git rev-parse --abbrev-ref HEAD 2>/dev/null"):gsub("%s+", "")
-    local cmd = "trunk check --show-existing"
+    local cmd = "trunk fmt && trunk check --show-existing"
     if branch == "main" or branch == "master" then
-      cmd = "trunk check --all --show-existing"
+      cmd = "trunk fmt --all && trunk check --all --show-existing"
     end
 
     local trunk_tui = Terminal:new({ 
@@ -114,10 +114,11 @@ vim.schedule(function()
       hidden = true, 
       direction = "float",
       close_on_exit = false,
-      float_opts = { border = "double" },
+      float_opts = { border = "double", title = " 󰆏 Trunk Scan (y to copy) ", title_pos = "center" },
       -- Permet de fermer avec 'q' une fois le scan fini
       on_open = function(term)
         vim.api.nvim_buf_set_keymap(term.bufnr, "n", "q", "<cmd>close<CR>", {noremap = true, silent = true})
+        vim.api.nvim_buf_set_keymap(term.bufnr, "n", "y", "<cmd>%y+<CR><cmd>lua vim.notify('Copied! 󰆏')<CR>", {noremap = true, silent = true})
       end,
     })
     trunk_tui:toggle()
@@ -127,13 +128,14 @@ vim.schedule(function()
   map("n", "<leader>ta", function()
     local Terminal = require("toggleterm.terminal").Terminal
     local trunk_tui = Terminal:new({ 
-      cmd = "trunk check --all --show-existing", 
+      cmd = "trunk fmt --all && trunk check --all --show-existing", 
       hidden = true, 
       direction = "float",
       close_on_exit = false,
-      float_opts = { border = "double" },
+      float_opts = { border = "double", title = " 󰆏 Trunk Check All (y to copy) ", title_pos = "center" },
       on_open = function(term)
         vim.api.nvim_buf_set_keymap(term.bufnr, "n", "q", "<cmd>close<CR>", {noremap = true, silent = true})
+        vim.api.nvim_buf_set_keymap(term.bufnr, "n", "y", "<cmd>%y+<CR><cmd>lua vim.notify('Copied! 󰆏')<CR>", {noremap = true, silent = true})
       end,
     })
     trunk_tui:toggle()

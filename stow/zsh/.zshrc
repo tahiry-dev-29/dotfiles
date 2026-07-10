@@ -71,3 +71,9 @@ setopt SHARE_HISTORY
 
 # 11. LOCAL OVERRIDES (Private configs)
 [[ -f ~/.zsh_local ]] && source ~/.zsh_local
+
+# opencode
+export PATH=/home/tahiry/.opencode/bin:$PATH
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/home/tahiry/google-cloud-sdk/path.zsh.inc' ]; then . '/home/tahiry/google-cloud-sdk/path.zsh.inc'; fi
