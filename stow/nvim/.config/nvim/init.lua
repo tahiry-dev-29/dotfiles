@@ -78,6 +78,14 @@ vim.schedule(function()
    map("n", "<C-j>", "<cmd>Trouble diagnostics toggle<CR>", { desc = "Project Problems" })
    map("n", "<leader>ds", "<cmd>DiagScan<CR>", { desc = "Scan Project Diagnostics" })
    map("n", "<leader>dc", "<cmd>DiagClear<CR>", { desc = "Clear Project Diagnostics" })
+
+   -- Copier tout le texte du panneau Trouble avec 'y'
+   vim.api.nvim_create_autocmd("FileType", {
+     pattern = "trouble",
+     callback = function(args)
+       vim.keymap.set("n", "y", "<cmd>%y+<CR>", { buffer = args.buf, silent = true, desc = "Copy all" })
+     end,
+   })
   
   -- LAZYGIT (Toggle robuste + Nettoyage terminaux fantômes)
   map("n", "<C-g>", function()

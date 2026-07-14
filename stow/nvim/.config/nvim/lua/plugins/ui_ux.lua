@@ -8,11 +8,14 @@ return {
     opts = {
       ensure_installed = { "html", "css", "typescript", "angular", "lua", "prisma", "dart", "json", "scss", "javascript" },
       auto_install = true,
-      highlight = { enable = true },
+      highlight = {
+        enable = true,
+        additional_vim_regex_highlighting = false,
+      },
       indent = { enable = true },
     },
     config = function(_, opts)
-      local status, ts_configs = pcall(require, "nvim-treesitter.configs")
+      local status, ts_configs = pcall(require, "nvim-treesitter.config")
       if status then ts_configs.setup(opts) end
     end,
   },

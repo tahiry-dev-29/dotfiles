@@ -28,15 +28,6 @@ return {
     end,
   },
 
-  -- Treesitter pour les couleurs
-  {
-    "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "html", "css", "typescript", "angular", "lua", "prisma", "dart", "json", "scss" },
-      highlight = { enable = true },
-    },
-  },
-
   -- Vos outils VS Code
   { "nvim-telescope/telescope.nvim", cmd = "Telescope" },
   {
