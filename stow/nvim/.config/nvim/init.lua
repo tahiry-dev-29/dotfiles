@@ -175,4 +175,21 @@ vim.schedule(function()
     require("conform").format({ lsp_fallback = true }) 
     vim.notify("Formatting complete", vim.log.levels.INFO)
   end, { desc = "Format Code" })
+
+  -- SCRIPTS RUNNER (auto-detecte package.json scripts)
+  map("n", "<leader>rr", function()
+    require("configs.runner").pick()
+  end, { desc = "Run Script (choisir)" })
+
+  map("n", "<leader>rt", function()
+    require("configs.runner").run_test()
+  end, { desc = "Run Tests" })
+
+  map("n", "<leader>re", function()
+    require("configs.runner").run_e2e()
+  end, { desc = "Run E2E Tests" })
+
+  map("n", "<leader>rl", function()
+    require("configs.runner").run_lint()
+  end, { desc = "Run Lint" })
 end)
