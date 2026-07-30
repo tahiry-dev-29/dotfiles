@@ -68,9 +68,9 @@ function Link-File {
 $ConfigApps = @("nvim", "trunk", "lazygit", "lazydocker", "ghostty")
 
 foreach ($App in $ConfigApps) {
-    $SrcPath = Join-Path -Path $DotfilesDir -ChildPath "configs\$App"
+    $SrcPath = Join-Path -Path $DotfilesDir -ChildPath "stow\$App"
     if (Test-Path -Path $SrcPath) {
-        # Note: Some apps use different folders in Windows. 
+        # Note: Some apps use different folders in Windows.
         # Neovim uses ~/AppData/Local/nvim
         $DestPath = Join-Path -Path $ConfigDir -ChildPath $App
         Prompt-Install -Name $App -Src $SrcPath -Dest $DestPath
@@ -80,31 +80,31 @@ foreach ($App in $ConfigApps) {
 Write-Host "-----------------------------------------------"
 Write-Host "🧩 Optional Developer Modules"
 
-$AngularSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\angular_aliases.zsh"
+$AngularSrc = Join-Path -Path $DotfilesDir -ChildPath "stow\zsh-optional\.angular_aliases.zsh"
 if (Test-Path -Path $AngularSrc) {
     $AngularDest = Join-Path -Path $env:USERPROFILE -ChildPath ".angular_aliases.zsh"
     Prompt-Install -Name "Angular & Nx Aliases" -Src $AngularSrc -Dest $AngularDest
 }
 
-$DockerSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\docker_aliases.zsh"
+$DockerSrc = Join-Path -Path $DotfilesDir -ChildPath "stow\zsh-optional\.docker_aliases.zsh"
 if (Test-Path -Path $DockerSrc) {
     $DockerDest = Join-Path -Path $env:USERPROFILE -ChildPath ".docker_aliases.zsh"
     Prompt-Install -Name "Docker Aliases" -Src $DockerSrc -Dest $DockerDest
 }
 
-$FlutterSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\flutter_aliases.zsh"
+$FlutterSrc = Join-Path -Path $DotfilesDir -ChildPath "stow\zsh-optional\.flutter_aliases.zsh"
 if (Test-Path -Path $FlutterSrc) {
     $FlutterDest = Join-Path -Path $env:USERPROFILE -ChildPath ".flutter_aliases.zsh"
     Prompt-Install -Name "Flutter Aliases" -Src $FlutterSrc -Dest $FlutterDest
 }
 
-$NestjsPrismaSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\nestjs_prisma_aliases.zsh"
+$NestjsPrismaSrc = Join-Path -Path $DotfilesDir -ChildPath "stow\zsh-optional\.nestjs_prisma_aliases.zsh"
 if (Test-Path -Path $NestjsPrismaSrc) {
     $NestjsPrismaDest = Join-Path -Path $env:USERPROFILE -ChildPath ".nestjs_prisma_aliases.zsh"
     Prompt-Install -Name "NestJS & Prisma Aliases" -Src $NestjsPrismaSrc -Dest $NestjsPrismaDest
 }
 
-$GitSrc = Join-Path -Path $DotfilesDir -ChildPath "configs\optional\git_aliases.zsh"
+$GitSrc = Join-Path -Path $DotfilesDir -ChildPath "stow\zsh-optional\.git_aliases.zsh"
 if (Test-Path -Path $GitSrc) {
     $GitDest = Join-Path -Path $env:USERPROFILE -ChildPath ".git_aliases.zsh"
     Prompt-Install -Name "Git & GitHub CLI Aliases" -Src $GitSrc -Dest $GitDest

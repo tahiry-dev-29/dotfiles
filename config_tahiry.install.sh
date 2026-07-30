@@ -211,6 +211,33 @@ if [ "${wants[zsh]}" = true ]; then
     fi
 fi
 
+# 5. Skills Migration Tool (migrate_skills.py)
+echo ""
+echo "🤖 Skills Migration Tool (skill-list / skill-migrate / skill-sync)"
+read -p "  [?] Install migrate_skills.py to ~/.local/share/thr-skill/scripts/ (stable location)? [Y/n] " ans_skill
+if [[ "$ans_skill" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
+    mkdir -p "$HOME/.local/share/thr-skill/scripts"
+    SKILL_SCRIPT_SRC=""
+    for _candidate in \
+        "$HOME/Downloads/thr-skill/scripts/migrate_skills.py" \
+        "$DOTFILES_DIR/scripts/migrate_skills.py"; do
+        if [[ -f "$_candidate" ]]; then
+            SKILL_SCRIPT_SRC="$_candidate"
+            break
+        fi
+    done
+    if [[ -n "$SKILL_SCRIPT_SRC" ]]; then
+        cp "$SKILL_SCRIPT_SRC" "$HOME/.local/share/thr-skill/scripts/migrate_skills.py"
+        chmod +x "$HOME/.local/share/thr-skill/scripts/migrate_skills.py"
+        echo "  ✅ migrate_skills.py installed to ~/.local/share/thr-skill/scripts/"
+        echo "  💡 To override: export THR_SKILL_SCRIPT=/custom/path/migrate_skills.py in ~/.zsh_local"
+    else
+        echo "  ⚠️  migrate_skills.py not found in ~/Downloads/thr-skill/scripts/ or $DOTFILES_DIR/scripts/"
+        echo "  💡 You can manually run: cp /path/to/migrate_skills.py ~/.local/share/thr-skill/scripts/"
+        echo "  💡 Or set: export THR_SKILL_SCRIPT=/path/to/migrate_skills.py in ~/.zsh_local"
+    fi
+fi
+
 echo "==============================================="
 echo "🎉 Installation complete!"
 echo "If any configurations were replaced, they were safely backed up with the .bak extension."

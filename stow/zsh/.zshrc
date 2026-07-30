@@ -32,9 +32,29 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
+# NVM auto-use: switch Node version automatically when entering a dir with .nvmrc
+autoload -U add-zsh-hook
+_nvm_auto_use() {
+  local nvmrc_path
+  nvmrc_path="$(nvm_find_nvmrc)"
+  if [[ -n "$nvmrc_path" ]]; then
+    local nvmrc_node_version
+    nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+    if [[ "$nvmrc_node_version" == "N/A" ]]; then
+      nvm install
+    elif [[ "$nvmrc_node_version" != "$(nvm version)" ]]; then
+      nvm use --silent
+    fi
+  elif [[ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ]] && [[ "$(nvm version)" != "$(nvm version default)" ]]; then
+    nvm use default --silent
+  fi
+}
+add-zsh-hook chpwd _nvm_auto_use
+_nvm_auto_use  # run once on shell startup
+
 # PNPM
 export PNPM_HOME="$HOME/.local/share/pnpm"
-case ":$PATH:" in *":$PNPM_HOME:"*) ;; *) export PATH="$PNPM_HOME:$PATH" ;; esac
+case ":$PATH:" in *":$PNPM_HOME:"*) ;; *) export PATH="$PNPM_HOME/bin:$PATH" ;; esac
 
 # BUN
 export BUN_INSTALL="$HOME/.bun"
@@ -46,20 +66,27 @@ export FLUTTER_HOME="$HOME/development/flutter"
 export ANDROID_HOME="$HOME/Android/Sdk"
 export PATH="$PATH:$FLUTTER_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin"
 
-# 6. PRODUCTIVITY TOOLS
+# 6. AI / API KEYS
+# ⚠️  NEVER commit API keys here — add them to ~/.zsh_local (not versioned)
+# Example ~/.zsh_local:
+#   export GOOGLE_GENERATIVE_AI_API_KEY="your-key"
+#   export OPENAI_API_KEY="your-key"
+#   export ANTHROPIC_API_KEY="your-key"
+
+# 7. PRODUCTIVITY TOOLS
 if command -v ng >/dev/null; then source <(ng completion script); fi
 if command -v zoxide >/dev/null; then eval "$(zoxide init zsh)"; fi
 
-# 7. THEME
+# 8. THEME
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 [[ -f ~/powerlevel10k/powerlevel10k.zsh-theme ]] && source ~/powerlevel10k/powerlevel10k.zsh-theme
 
-# 8. TTY
+# 9. TTY
 [[ -t 0 ]] && stty -ixon
 
 . "$HOME/.local/share/../bin/env"
 
-# 9. HISTORY
+# 10. HISTORY
 HISTSIZE=100000
 SAVEHIST=100000
 HISTFILE=~/.zsh_history
@@ -73,7 +100,11 @@ setopt SHARE_HISTORY
 [[ -f ~/.zsh_local ]] && source ~/.zsh_local
 
 # opencode
-export PATH=/home/tahiry/.opencode/bin:$PATH
+[[ -d "$HOME/.opencode/bin" ]] && export PATH="$HOME/.opencode/bin:$PATH"
 
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/home/tahiry/google-cloud-sdk/path.zsh.inc' ]; then . '/home/tahiry/google-cloud-sdk/path.zsh.inc'; fi
+# Google Cloud SDK (optional — only loaded if installed)
+[[ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]] && source "$HOME/google-cloud-sdk/path.zsh.inc"
+[[ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]] && source "$HOME/google-cloud-sdk/completion.zsh.inc"
+
+# supercode
+[[ -d "$HOME/.supercode/bin" ]] && export PATH="$HOME/.supercode/bin:$PATH"

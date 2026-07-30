@@ -9,6 +9,22 @@
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# OS DETECTION HELPERS 🖥️  (Linux · macOS · WSL · Windows)
+# ══════════════════════════════════════════════════════════════════════════════
+_os_is_mac()   { [[ "$OSTYPE" == darwin* ]]; }
+_os_is_linux() { [[ "$OSTYPE" == linux-gnu* ]]; }
+_os_is_wsl()   { [[ -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null; }
+
+# Find Python executable — python3 (Linux/macOS), py (Windows/some envs)
+_find_python() {
+  if   command -v python3 >/dev/null 2>&1; then echo "python3"
+  elif command -v python  >/dev/null 2>&1; then echo "python"
+  elif command -v py      >/dev/null 2>&1; then echo "py"     # Windows
+  else echo ""; fi
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 1. SYSTEM & TOOLS 🛠️
 # ══════════════════════════════════════════════════════════════════════════════
 alias c='clear'
@@ -48,55 +64,131 @@ alias clean-sys='sys-clean'
 alias mem='free -h'
 
 # Fixes
-alias brave-fix="rm -f ~/.config/BraveSoftware/Brave-Browser/SingletonLock ~/.config/BraveSoftware/Brave-Browser/SingletonCookie"
+brave-fix() {
+  if _os_is_mac; then
+    rm -f "$HOME/Library/Application Support/BraveSoftware/Brave-Browser/SingletonLock" \
+          "$HOME/Library/Application Support/BraveSoftware/Brave-Browser/SingletonCookie"
+  else
+    rm -f "$HOME/.config/BraveSoftware/Brave-Browser/SingletonLock" \
+          "$HOME/.config/BraveSoftware/Brave-Browser/SingletonCookie"
+  fi
+  echo "✅ Brave lock files removed."
+}
 alias fix-gpg='gpg --refresh-keys'
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 2. SERVICES 🐳
+# 2. SERVICES 🐳  (Multi-Platform: Linux · macOS · WSL)
 # ══════════════════════════════════════════════════════════════════════════════
-alias pg-start='echo "🐘 Starting PostgreSQL..." && sudo systemctl start postgresql && echo "✅ PostgreSQL started"'
-alias pg-stop='echo "🐘 Stopping PostgreSQL..." && sudo systemctl stop postgresql && echo "✅ PostgreSQL stopped"'
-alias start-sql='echo "🐘 Starting SQL..." && sudo systemctl start postgresql && echo "✅ SQL started"'
-alias stop-sql='echo "🐘 Stopping SQL..." && sudo systemctl stop postgresql && echo "✅ SQL stopped"'
-alias pg-status='echo "🐘 PostgreSQL status:" && sudo systemctl status postgresql'
-alias pg-restart='echo "🐘 Restarting PostgreSQL..." && sudo systemctl restart postgresql && echo "✅ PostgreSQL restarted"'
-alias pg-log='echo "🐘 Following PostgreSQL logs (Ctrl+C to exit)..." && sudo journalctl -u postgresql -f'
 
-alias my-start='echo "🐬 Starting MySQL..." && sudo systemctl start mysql && echo "✅ MySQL started"'
-alias my-stop='echo "🐬 Stopping MySQL..." && sudo systemctl stop mysql && echo "✅ MySQL stopped"'
-alias my-status='echo "🐬 MySQL status:" && sudo systemctl status mysql'
+# Internal helper — wraps systemctl / brew services / net.exe depending on OS
+_svc() {
+  local action="$1" service="$2"
+  if _os_is_mac; then
+    case "$action" in
+      start|stop|restart) brew services "$action" "$service" ;;
+      status)             brew services info "$service" ;;
+    esac
+  elif _os_is_wsl; then
+    if systemctl is-system-running >/dev/null 2>&1; then
+      sudo systemctl "$action" "$service"
+    else
+      case "$action" in
+        start)   net.exe start "$service" 2>/dev/null || echo "⚠️  Start '$service' manually." ;;
+        stop)    net.exe stop  "$service" 2>/dev/null || echo "⚠️  Stop '$service' manually." ;;
+        restart) net.exe stop "$service" 2>/dev/null; net.exe start "$service" 2>/dev/null ;;
+        status)  sc.exe query "$service" 2>/dev/null ;;
+      esac
+    fi
+  else
+    sudo systemctl "$action" "$service"
+  fi
+}
 
-alias mg-start='echo "🍃 Starting MongoDB..." && sudo systemctl start mongod && echo "✅ MongoDB started"'
-alias mg-stop='echo "🍃 Stopping MongoDB..." && sudo systemctl stop mongod && echo "✅ MongoDB stopped"'
-alias mg-status='echo "🍃 MongoDB status:" && sudo systemctl status mongod'
+# PostgreSQL
+pg-start()   { echo "🐘 Starting PostgreSQL...";  _svc start postgresql   && echo "✅ PostgreSQL started"; }
+pg-stop()    { echo "🐘 Stopping PostgreSQL...";  _svc stop  postgresql   && echo "✅ PostgreSQL stopped"; }
+pg-status()  { echo "🐘 PostgreSQL status:";       _svc status postgresql; }
+pg-restart() { echo "🐘 Restarting PostgreSQL..."; _svc restart postgresql && echo "✅ PostgreSQL restarted"; }
+pg-log() {
+  if _os_is_mac; then
+    tail -f /opt/homebrew/var/log/postgresql*.log 2>/dev/null || \
+    tail -f /usr/local/var/log/postgresql*.log 2>/dev/null || \
+    echo "⚠️  PostgreSQL log not found. Try: brew info postgresql"
+  else
+    echo "🐘 Following PostgreSQL logs (Ctrl+C to exit)..."
+    sudo journalctl -u postgresql -f
+  fi
+}
+start-sql() { pg-start; }
+stop-sql()  { pg-stop; }
 
-alias re-start='echo "🔴 Starting Redis..." && sudo systemctl start redis-server && echo "✅ Redis started"'
-alias re-stop='echo "🔴 Stopping Redis..." && sudo systemctl stop redis-server && echo "✅ Redis stopped"'
+# MySQL
+my-start()  { echo "🐬 Starting MySQL..."; _svc start  mysql && echo "✅ MySQL started"; }
+my-stop()   { echo "🐬 Stopping MySQL..."; _svc stop   mysql && echo "✅ MySQL stopped"; }
+my-status() { echo "🐬 MySQL status:";     _svc status mysql; }
+
+# MongoDB
+mg-start()  { echo "🍃 Starting MongoDB..."; _svc start  mongod && echo "✅ MongoDB started"; }
+mg-stop()   { echo "🍃 Stopping MongoDB..."; _svc stop   mongod && echo "✅ MongoDB stopped"; }
+mg-status() { echo "🍃 MongoDB status:";     _svc status mongod; }
+
+# Redis
+re-start()  { echo "🔴 Starting Redis..."; _svc start  redis-server && echo "✅ Redis started"; }
+re-stop()   { echo "🔴 Stopping Redis..."; _svc stop   redis-server && echo "✅ Redis stopped"; }
 alias re-cli='echo "🔴 Connecting to Redis CLI..." && redis-cli'
 alias re-flush='echo "⚠️  Flushing all Redis data..." && redis-cli FLUSHALL && echo "🔴 Redis cleared"'
 
-alias dk-start='echo "🐳 Starting Docker..." && sudo systemctl start docker && echo "✅ Docker started"'
-alias dk-stop='echo "🐳 Stopping Docker..." && sudo systemctl stop docker && echo "✅ Docker stopped"'
-alias dk-status='echo "🐳 Docker status:" && sudo systemctl status docker'
+# Docker
+dk-start()  { echo "🐳 Starting Docker..."; _svc start  docker && echo "✅ Docker started"; }
+dk-stop()   { echo "🐳 Stopping Docker..."; _svc stop   docker && echo "✅ Docker stopped"; }
+dk-status() { echo "🐳 Docker status:";     _svc status docker; }
 
 # Combos
 alias dev-up='echo "▶ Starting dev stack..." && pg-start && dk-start && re-start && echo "✅ Dev stack started"'
 alias dev-down='echo "■ Stopping dev stack..." && pg-stop && mg-stop && dk-stop && re-stop && echo "🛑 Dev stack stopped"'
-alias dev-break='dev-down && clean-sys && sudo shutdown now'
+dev-break() {
+  dev-down && clean-sys
+  if _os_is_mac; then sudo shutdown -h now; else sudo shutdown now; fi
+}
 
-# Ports
-alias kill3000='fuser -k 3000/tcp && echo "✅ Port 3000 freed"'
-alias kill4200='fuser -k 4200/tcp && echo "✅ Port 4200 freed"'
-alias kill8080='fuser -k 8080/tcp && echo "✅ Port 8080 freed"'
-kill-port() { echo "🔌 Killing port $1..."; fuser -k ${1}/tcp && echo "✅ Port $1 freed"; }
+# Ports (cross-platform: fuser on Linux, lsof on macOS, taskkill on WSL)
+kill-port() {
+  local port="${1:?🔌 Usage: kill-port <port>}"
+  echo "🔌 Killing port $port..."
+  if _os_is_mac; then
+    lsof -ti:"$port" | xargs kill -9 2>/dev/null && echo "✅ Port $port freed" || echo "⚠️ Nothing on port $port"
+  elif _os_is_wsl; then
+    command -v fuser >/dev/null 2>&1 \
+      && fuser -k "${port}/tcp" && echo "✅ Port $port freed" \
+      || netstat.exe -ano | grep ":$port " | awk '{print $5}' | xargs -I{} taskkill.exe /PID {} /F 2>/dev/null
+  else
+    fuser -k "${port}/tcp" 2>/dev/null && echo "✅ Port $port freed" || echo "⚠️ Nothing on port $port"
+  fi
+}
+alias kill3000='kill-port 3000'
+alias kill4200='kill-port 4200'
+alias kill8080='kill-port 8080'
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 📋 CLIPBOARD HISTORY (Wayland — wl-clipboard)
+# 📋 CLIPBOARD HISTORY (Multi-Platform: Wayland · X11 · macOS · WSL)
 # ══════════════════════════════════════════════════════════════════════════════
 # Functions moved to scripts/zsh_functions.zsh
-alias clip='echo "📋 Current clipboard:" && wl-paste 2>/dev/null || echo "❌ Empty"'
+_clipboard_paste() {
+  if _os_is_mac; then
+    pbpaste
+  elif _os_is_wsl; then
+    powershell.exe Get-Clipboard 2>/dev/null | tr -d '\r'
+  elif [[ -n "$WAYLAND_DISPLAY" ]]; then
+    wl-paste 2>/dev/null
+  elif [[ -n "$DISPLAY" ]]; then
+    xclip -selection clipboard -o 2>/dev/null || xsel -bo 2>/dev/null
+  else
+    echo "❌ No clipboard backend detected"
+  fi
+}
+alias clip='echo "📋 Current clipboard:" && _clipboard_paste'
 alias clip-clear='rm -f "$HOME/.cache/clipboard_history.log" && echo "🗑️  Clipboard history cleared."'
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -130,6 +222,67 @@ alias pwhy='pnpm why'                 # why is this package installed?
 # 4. AI & LLM 🤖
 # ══════════════════════════════════════════════════════════════════════════════
 alias gpt='codex --ask-for-approval never --sandbox danger-full-access'
+# Locate migrate_skills.py — dynamic resolution, works on any OS/user.
+# Priority: 1) $THR_SKILL_SCRIPT env var  2) stable install locations  3) auto-discover
+_find_migrate_script() {
+  # 1. Explicit override via env var (set in ~/.zsh_local for custom paths)
+  [[ -n "$THR_SKILL_SCRIPT" && -f "$THR_SKILL_SCRIPT" ]] && echo "$THR_SKILL_SCRIPT" && return
+  # 2. Stable/known locations (all resolved via $HOME — portable across users & OS)
+  local _candidates=(
+    "$HOME/.local/share/thr-skill/scripts/migrate_skills.py"   # installed by dotfiles install.sh
+    "$HOME/.agents/scripts/migrate_skills.py"
+    "$HOME/dotfiles/scripts/migrate_skills.py"
+    "$HOME/Downloads/thr-skill/scripts/migrate_skills.py"
+    "$HOME/.gemini/antigravity-cli/scripts/migrate_skills.py"
+    "$HOME/.claude/scripts/migrate_skills.py"
+  )
+  for _f in "${_candidates[@]}"; do
+    [[ -f "$_f" ]] && echo "$_f" && return
+  done
+  # 3. Auto-discover anywhere under $HOME (depth 6)
+  local _found
+  _found=$(find "$HOME" -maxdepth 6 -name "migrate_skills.py" 2>/dev/null | head -1)
+  [[ -n "$_found" ]] && echo "$_found" && return
+  echo "migrate_skills.py"  # last resort: hope it's on PATH
+}
+
+skill-list() {
+  if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "\n💡 USAGE DE SKILL-LIST :"
+    echo "   $ skill-list                   # Liste les skills dans TOUS les agents CLI"
+    echo "   $ skill-list --from claude     # Liste uniquement les skills de Claude Code CLI"
+    echo "   $ skill-list --from antigravity# Liste uniquement les skills d'Antigravity CLI"
+    echo "   $ skill-list --from agents     # Liste uniquement les skills d'OpenAI Codex / Agents"
+    echo "   $ skill-list --from download   # Liste uniquement les archives dans Downloads/thr-skill\n"
+    return 0
+  fi
+  local _py
+  _py="$(_find_python)"
+  [[ -z "$_py" ]] && echo "❌ Python not found. Please install Python 3." && return 1
+  "$_py" "$(_find_migrate_script)" list "$@"
+}
+
+skill-migrate() {
+  if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "\n⚠️  Mauvaise combinaison ou arguments manquants pour 'skill-migrate' !"
+    echo "💡 USAGE RECOMMANDÉ :"
+    echo "   $ skill-migrate <nom-skill> --from <source> --to <destination> [--mode symlink|copy|pack|unpack]"
+    echo "   Exemple: skill-migrate thr-cyber --from antigravity --to claude,agents\n"
+    return 1
+  fi
+  local _py
+  _py="$(_find_python)"
+  [[ -z "$_py" ]] && echo "❌ Python not found. Please install Python 3." && return 1
+  "$_py" "$(_find_migrate_script)" migrate "$@"
+}
+
+skill-sync() {
+  local _py
+  _py="$(_find_python)"
+  [[ -z "$_py" ]] && echo "❌ Python not found. Please install Python 3." && return 1
+  "$_py" "$(_find_migrate_script)" sync-all "$@"
+}
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 5. UTILS & PRODUCTIVITY 🌳
@@ -144,7 +297,14 @@ alias ping='ping -c 5'
 alias rgs='rg --type ts'             # ripgrep on TS files
 
 # GNOME Backup
-alias gnome-backup='~/dotfiles/scripts/gnome-dconf.sh'
+# GNOME Backup (Linux + GNOME only — skipped silently on macOS/WSL)
+gnome-backup() {
+  if _os_is_linux && ! _os_is_wsl && command -v dconf >/dev/null 2>&1; then
+    "$HOME/dotfiles/scripts/gnome-dconf.sh"
+  else
+    echo "⚠️  gnome-backup is only available on Linux with GNOME."
+  fi
+}
 
 # Generate random keys
 rand-key() { echo "🔑 Base64 Key ($1 bytes):"; openssl rand -base64 ${1:-32}; }
@@ -204,7 +364,7 @@ _fzf_cd_widget() {
   local selected
   selected=$(find "${FZF_CD_BASE:-$HOME}" -maxdepth ${FZF_CD_DEPTH:-5} -type d \
     -not -path '*/node_modules/*' \
-    -not -path '*/.git/*' \
+#    -not -path '*/.git/*' \
     -not -path '*/.dart_tool/*' \
     -not -path '*/.angular/*' \
     2>/dev/null | fzf --prompt='  Dir: ' --preview 'ls -la {}' --height=50% --reverse)
