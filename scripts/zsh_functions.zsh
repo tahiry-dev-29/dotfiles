@@ -112,7 +112,7 @@ function dev-status() {
 
 # 📋 CLIPBOARD HISTORY (Wayland — wl-clipboard)
 CLIP_HISTORY_FILE="$HOME/.cache/clipboard_history.log"
-CLIP_HISTORY_MAX=500
+CLIP_HISTORY_MAX=5000
 
 function clip-save() {
   local content
@@ -212,7 +212,7 @@ function clip-watch() {
 count-code() {
   local ext=${1:-ts}
   local limit=${2:-200}
-  local ignore="node_modules|dist|prisma|.prisma|.next|.angular|.nx|.git|.dart_tool|build|out|.firebase|coverage|.cache"
+  local ignore="node_modules|dist|prisma|.prisma|.next|.angular|.nx|.git|.dart_tool|build|seeds|out|.firebase|coverage|.cache"
   local total=0
   local flagged=0
   echo "╔══════════════════════════════════════════"

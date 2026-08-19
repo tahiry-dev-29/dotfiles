@@ -3,7 +3,7 @@
 # ==============================================================================
 if command -v nx >/dev/null 2>&1 || command -v ng >/dev/null 2>&1 || command -v bunx >/dev/null 2>&1; then
 alias nx="bunx nx"
-alias ngs="bunx nx serve"
+alias ngs='ng cache clean && bun run start'
 alias ngb="bunx nx build"
 alias ngt="bunx nx test"
 alias ngl="bunx nx lint"

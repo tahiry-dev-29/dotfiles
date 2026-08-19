@@ -60,7 +60,7 @@ return {
       { "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", desc = "Quickfix List" },
     },
   },
-  { "nvim-tree/nvim-tree.lua", 
+  { "nvim-tree/nvim-tree.lua",
     opts = {
       view = {
         adaptive_size = true,
@@ -70,7 +70,28 @@ return {
         git_ignored = false,
         custom = { ".git" },
       },
-    } 
+    },
+  },
+
+  -- GitHub Copilot (local, pas de téléchargement)
+  {
+    dir = vim.fn.stdpath("config") .. "/pack/github/start/copilot.vim",
+    event = "InsertEnter",
+    cmd = "Copilot",
+    init = function()
+      vim.g.copilot_no_tab_map = true
+      vim.g.copilot_filetypes = { ["*"] = true, gitcommit = false, [".env"] = false }
+    end,
+    config = function()
+      local map = vim.keymap.set
+      map("i", "<M-l>", function() return vim.fn["copilot#Accept"]("") end, { expr = true, desc = "Copilot: Accept" })
+      map("i", "<M-]>", "<Cmd>call copilot#Next()<CR>", { desc = "Copilot: Next" })
+      map("i", "<M-[>", "<Cmd>call copilot#Previous()<CR>", { desc = "Copilot: Previous" })
+      map("i", "<M-\\>", "<Cmd>call copilot#Suggest()<CR>", { desc = "Copilot: Suggest" })
+      map("i", "<C-]>", "<Cmd>call copilot#Dismiss()<CR>", { desc = "Copilot: Dismiss" })
+      map("i", "<M-Right>", "<Cmd>call copilot#AcceptWord()<CR>", { desc = "Copilot: Accept Word" })
+      map("i", "<M-C-Right>", "<Cmd>call copilot#AcceptLine()<CR>", { desc = "Copilot: Accept Line" })
+    end,
   },
   { "stevearc/conform.nvim", event = "BufWritePre", opts = require "configs.conform" },
   { "lewis6991/gitsigns.nvim", event = "User FilePost", opts = {} },

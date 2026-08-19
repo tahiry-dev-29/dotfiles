@@ -96,6 +96,8 @@ setopt SHARE_HISTORY
 # 10. ALIASES (loaded last — after all runtimes & tools are ready)
 [[ -f ~/.zsh_aliases ]] && source ~/.zsh_aliases
 
+
+
 # 11. LOCAL OVERRIDES (Private configs)
 [[ -f ~/.zsh_local ]] && source ~/.zsh_local
 

@@ -201,6 +201,7 @@ alias brb='bun run build'
 alias brt='bun run test'
 alias bx='bunx'
 alias brm='bun remove'
+alias ngs='ng cache clean && bun run start'
 
 
 # pnpm
