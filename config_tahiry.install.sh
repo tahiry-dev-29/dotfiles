@@ -77,6 +77,14 @@ if [[ "$ans_deps" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
     else
         echo "  ✅ NVM is already installed."
     fi
+
+    # Install Herdr (terminal workspace manager for AI coding agents)
+    if ! command -v herdr &> /dev/null; then
+        echo "  🦬 Installing Herdr..."
+        curl -fsSL https://herdr.dev/install.sh | sh
+    else
+        echo "  ✅ Herdr is already installed."
+    fi
     echo "  ✅ Dependencies installed!"
 fi
 

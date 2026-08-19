@@ -310,7 +310,7 @@ dot-health() {
   echo "╔══════════════════════════════════════════╗"
   echo "║       🏥 Dotfiles Health Check           ║"
   echo "╠══════════════════════════════════════════╣"
-  local tools=("bun" "pnpm" "node" "nvm" "docker" "nx" "ng" "flutter" "rg" "fd" "gh" "git" "tree" "zoxide" "fzf")
+  local tools=("bun" "pnpm" "node" "nvm" "docker" "nx" "ng" "flutter" "rg" "fd" "gh" "git" "tree" "zoxide" "fzf" "herdr")
   for tool in "${tools[@]}"; do
     if [[ "$tool" == "nvm" ]]; then
       if typeset -f nvm >/dev/null 2>&1 || [[ -s "$NVM_DIR/nvm.sh" ]]; then

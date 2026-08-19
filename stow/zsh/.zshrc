@@ -110,3 +110,8 @@ setopt SHARE_HISTORY
 
 # supercode
 [[ -d "$HOME/.supercode/bin" ]] && export PATH="$HOME/.supercode/bin:$PATH"
+
+# Herdr (terminal workspace manager for AI coding agents)
+# Binary installed to ~/.local/bin/herdr via https://herdr.dev/install.sh
+# ~/.local/bin is already in PATH above.
+# HERDR_ENV=1 is injected by Herdr itself on managed panes — do NOT export here.

@@ -286,6 +286,20 @@ skill-sync() {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# 4b. HERDR – Terminal Workspace Manager 🦬
+# ══════════════════════════════════════════════════════════════════════════════
+alias hdr='herdr'
+alias hdrs='herdr session list'
+alias hdrws='herdr workspace list'
+alias hdrtb='herdr tab list'
+alias hdrpn='herdr pane list'
+alias hdrap='herdr agent list'
+alias hdrun='herdr pane run'
+# Inside a Herdr pane, these vars reveal the current context
+alias hdr-env='echo "workspace=$HERDR_WORKSPACE_ID  tab=$HERDR_TAB_ID  pane=$HERDR_PANE_ID"'
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 5. UTILS & PRODUCTIVITY 🌳
 # ══════════════════════════════════════════════════════════════════════════════
 alias tree-pro='tree -L 10 -I "node_modules|build|dist|.dart_tool|.git|docs|ios|android|.next|.nx|.angular|coverage"'
