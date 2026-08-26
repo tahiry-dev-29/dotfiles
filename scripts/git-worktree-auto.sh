@@ -38,15 +38,41 @@ log_step()    { _log "STEP"    "$BLUE"   "▶" "$@"; }
 _divider() { echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${RESET}"; }
 _divider_end() { echo -e "${CYAN}╚══════════════════════════════════════════════════════╝${RESET}"; }
 
+# Réponse mémorisée : le 1er y/n s'applique à TOUTES les questions suivantes
+# de la session (comportement "répondre une seule fois").
+GWT_CONFIRM_CHOICE=""
+
 _confirm() {
   local prompt="$1"
   if [[ "${GWT_AUTO_YES:-false}" == "true" ]]; then
     printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}y (auto)\n"
     return 0
   fi
-  printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}"
+  # Une réponse a déjà été donnée dans cette session → on la réutilise
+  if [[ -n "$GWT_CONFIRM_CHOICE" ]]; then
+    printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}${GWT_CONFIRM_CHOICE} (mémo)\n"
+    [[ "$GWT_CONFIRM_CHOICE" == "y" ]]
+    return $?
+  fi
+  printf "${YELLOW}❓ ${prompt} [y/N/a] ${RESET}"
+  local reply
   read -r reply
-  [[ "$reply" =~ ^[yY]$ ]]
+  case "$reply" in
+    a|A)
+      # 'a' = appliquer OUI à toutes les questions suivantes
+      GWT_CONFIRM_CHOICE="y"
+      printf "${CYAN}   ↳ 'a' = oui pour tout le reste de cette session${RESET}\n"
+      return 0
+      ;;
+    y|Y)
+      GWT_CONFIRM_CHOICE="y"
+      return 0
+      ;;
+    *)
+      GWT_CONFIRM_CHOICE="n"
+      return 1
+      ;;
+  esac
 }
 
 # ── Guard: must be inside a git repo ─────────────────────────────────────────
@@ -72,6 +98,7 @@ usage() {
   echo ""
   echo -e "  ${CYAN}Options:${RESET}"
   echo -e "    -y, --yes             Skip all confirmation prompts (auto-yes)"
+  echo -e "    Answer 'a' at any prompt = yes to ALL remaining prompts of this run"
   echo -e "    GWT_LOG_FILE=<path>   Custom log file (default: ~/.cache/git-worktree-auto.log)"
   echo ""
   echo -e "  ${CYAN}Examples:${RESET}"
@@ -212,9 +239,8 @@ cmd_remove() {
   git worktree remove "$wt_path" --force && log_success "Worktree removed." || { log_error "Failed to remove worktree."; exit 1; }
 
   if [[ -n "$wt_branch" && "$wt_branch" != "main" && "$wt_branch" != "master" ]]; then
-    if _confirm "Delete the associated branch '$wt_branch' as well?"; then
-      git branch -D "$wt_branch" && log_success "Branch $wt_branch deleted." || log_warn "Failed to delete branch."
-    fi
+    log_step "Deleting associated branch '$wt_branch'..."
+    git branch -D "$wt_branch" && log_success "Branch $wt_branch deleted." || log_warn "Failed to delete branch."
   fi
 }
 
