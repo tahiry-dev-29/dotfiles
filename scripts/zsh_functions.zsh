@@ -393,16 +393,19 @@ wt-new() {
 # 📦 BRS — Multi-package.json Script Runner (monorepo aware, bun-first)
 # ==============================================================================
 # Scan TOUS les package.json du repo (racine, backend/, frontend/, apps/…),
-# regroupe les scripts PAR PROJET dans fzf, puis lance le script choisi avec
-# le bon package manager :
+# regroupe les scripts PAR PROJET dans fzf, puis lance les scripts choisis
+# UN PAR UN avec le bon package manager :
 #   bun.lock / bun.lockb  -> bun
 #   pnpm-lock.yaml        -> pnpm
 #   yarn.lock             -> yarn
 #   package-lock.json     -> npm
 #   (rien)                -> bun (préférence)
 #
-# Usage :  brs [dossier]        (dossier = racine du repo ou sous-dossier)
-# Variables : BRS_DEPTH=3       (profondeur max de recherche des package.json)
+# Usage :  brs [dossier]     (dossier = racine du repo ou sous-dossier)
+# Multi-sélection : TAB pour cocher plusieurs scripts, Entrée pour tout
+# lancer séquentiellement. Rapport final succès/échecs à la fin.
+# Variables : BRS_DEPTH=3          (profondeur de recherche package.json)
+#             BRS_STOP_ON_ERROR=1  (arrêter au 1er échec au lieu de continuer)
 brs() {
   emulate -L zsh
   if ! command -v fzf >/dev/null 2>&1; then echo "❌ fzf est requis pour brs"; return 1; fi
@@ -427,33 +430,58 @@ brs() {
     elif [[ -f "$dir/package-lock.json" ]]; then pm="npm"
     else pm="bun"
     fi
-    # Liste les scripts : "projet<TAB>script<TAB>commande<TAB>manager<TAB>dossier"
+    # Liste : "projet<TAB>script<TAB>commande<TAB>manager<TAB>dossier"
     bun -e "const p=require('${pkg}');const s=p.scripts||{};for(const k of Object.keys(s))console.log('${name}\t'+k+'\t'+String(s[k]).replace(/\\n/g,' ')+'\t${pm}\t${dir}')" >> "$list_file"
   done
 
   if [[ ! -s "$list_file" ]]; then
     rm -f "$list_file"
-    echo "⚠️  Aucun script trouvé dans $root (vérifie qu'il y a des package.json avec un champ scripts)"
+    echo "⚠️  Aucun script trouvé dans $root"
     return 1
   fi
 
   local choice
-  choice=$(fzf --delimiter='\t' --with-nth=1,2,3 \
-    --prompt='🚀 script à lancer > ' \
+  choice=$(fzf --multi --delimiter='\t' --with-nth=1,2,3 \
+    --prompt='🚀 scripts (TAB = multi-sélection) > ' \
     --header=$'projet │ script │ commande' \
-    --preview='echo {}; awk -F"\t" "{print \"Projet   : \"\$1; print \"Script   : \"\$2; print \"Commande : \"\$3; print \"Manager  : \"\$4; print \"Dossier  : \"\$5}"' \
+    --preview='awk -F"\t" "{print \"Projet   : \"\$1; print \"Script   : \"\$2; print \"Commande : \"\$3; print \"Manager  : \"\$4; print \"Dossier  : \"\$5}"' \
     --preview-window=down:6 < "$list_file")
   local rc_fzf=$?
   rm -f "$list_file"
   [[ $rc_fzf -ne 0 || -z "$choice" ]] && return 0   # Esc / Ctrl-C
 
-  local name script cmd pm_sel dir_sel
-  IFS=$'\t' read -r name script cmd pm_sel dir_sel <<< "$choice"
+  # ── Exécution SÉQUENTIELLE de tous les scripts sélectionnés ──
+  local total=$(printf '%s\n' "$choice" | grep -c .)
+  local i=0 failed=0 name script cmd pm_sel dir_sel
 
-  echo "🚀 [$pm_sel] $name › $script"
-  pushd "$dir_sel" >/dev/null || return 1
-  "$pm_sel" run "$script"
-  local rc=$?
-  popd >/dev/null
-  return $rc
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    (( i++ ))
+    unset name script cmd pm_sel dir_sel
+    IFS=$'\t' read -r name script cmd pm_sel dir_sel <<< "$line"
+    echo ""
+    echo "═══════ [$i/$total] 🚀 [$pm_sel] $name › $script ═══════"
+    if ! pushd "$dir_sel" >/dev/null 2>&1; then
+      echo "❌ Dossier introuvable: $dir_sel"; (( failed++ )); continue
+    fi
+    "$pm_sel" run "$script"
+    if (( $? != 0 )); then
+      (( failed++ ))
+      echo "❌ Échec: [$name] $script"
+      if [[ "${BRS_STOP_ON_ERROR:-0}" == 1 ]]; then
+        popd >/dev/null
+        echo "⏹️  Arrêt demandé (BRS_STOP_ON_ERROR=1)"
+        return 1
+      fi
+    fi
+    popd >/dev/null
+  done <<< "$choice"
+
+  echo ""
+  if (( failed > 0 )); then
+    echo "📋 Terminé : $((total - failed))/$total réussi(s), ❌ $failed échec(s)"
+    return 1
+  fi
+  echo "✅ Terminé : $total/$total réussi(s)"
+  return 0
 }
