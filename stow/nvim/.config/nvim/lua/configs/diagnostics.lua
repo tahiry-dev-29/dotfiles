@@ -1,7 +1,7 @@
 -- Project-wide diagnostics scanner (VSCode-style Problems panel)
 local M = {}
 
-local ns = vim.api.nvim_create_namespace("project_diagnostics")
+local ns = vim.api.nvim_create_namespace("nvim_lspc_project_diagnostics")
 local scan_timer = nil
 local is_scanning = false
 
@@ -182,16 +182,32 @@ local function apply_diagnostics(all_results)
   end
 
   local counts = { e = 0, w = 0, i = 0 }
+  local qf_items = {}
+
+  local function push_qf(filename, d)
+    qf_items[#qf_items + 1] = {
+      filename = filename,
+      lnum = (d.lnum or 0) + 1,
+      col = (d.col or 0) + 1,
+      text = ("%s %s"):format(d.source or "scan", d.message),
+      type = d.severity == vim.diagnostic.severity.ERROR and "E"
+        or d.severity == vim.diagnostic.severity.WARN and "W" or "I",
+    }
+  end
 
   for filename, diags in pairs(all_results) do
     -- Register the file as a buffer (no content loaded)
     local bufnr = vim.fn.bufadd(filename)
 
-    -- Inject scanner diagnostics even on loaded buffers (multi-source display)
+    -- NB : pour un buffer NON CHARGÉ, vim.diagnostic.set() met les
+    -- diagnostics en cache interne ; ils ne sont visibles ni par
+    -- vim.diagnostic.get() ni par Trouble tant que le fichier n'est pas
+    -- ouvert. D'où l'alimentation PARALLÈLE de la quickfix ci-dessous :
+    -- c'est elle qui alimente le panneau Problems (<C-j>) façon VS Code.
     vim.diagnostic.set(ns, bufnr, diags)
 
-    -- Always count for the summary notification
     for _, d in ipairs(diags) do
+      push_qf(filename, d)
       if d.severity == vim.diagnostic.severity.ERROR then
         counts.e = counts.e + 1
       elseif d.severity == vim.diagnostic.severity.WARN then
@@ -201,6 +217,25 @@ local function apply_diagnostics(all_results)
       end
     end
   end
+
+  -- Fusionne les diagnostics LIVE des buffers ouverts (LSP, eslint LSP…)
+  -- pour que le panneau reflète aussi ce qui n'a pas encore été scanné.
+  for _, d in ipairs(vim.diagnostic.get()) do
+    if d.namespace ~= ns and vim.api.nvim_buf_is_valid(d.bufnr) then
+      local name = vim.api.nvim_buf_get_name(d.bufnr)
+      if name ~= "" then
+        push_qf(name, { lnum = d.lnum, col = d.col, message = d.message, source = d.source, severity = d.severity })
+      end
+    end
+  end
+
+  table.sort(qf_items, function(a, b)
+    if a.filename ~= b.filename then return a.filename < b.filename end
+    if a.lnum ~= b.lnum then return a.lnum < b.lnum end
+    return (a.col or 0) < (b.col or 0)
+  end)
+
+  vim.fn.setqflist({}, "r", { items = qf_items, title = "Project Problems" })
 
   return counts
 end
@@ -273,8 +308,11 @@ function M.scan()
                 string.format("📋 Project —  %d   %d   %d", c.e, c.w, c.i),
                 vim.log.levels.WARN
               )
-              -- Auto-open Trouble panel on results
-              vim.cmd("Trouble diagnostics open")
+              -- Auto-open Trouble panel on results (qflist = tous les
+              -- fichiers du projet, pas seulement ceux ouverts)
+              pcall(function()
+                require("trouble").open("qflist", { focus = false })
+              end)
             end
           end
         end)
@@ -306,6 +344,7 @@ function M.setup()
     for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
       vim.diagnostic.set(ns, bufnr, {})
     end
+    vim.fn.setqflist({}, "r", { title = "Project Problems" })
     vim.notify("🧹 Project diagnostics cleared", vim.log.levels.INFO)
   end, { desc = "Clear project diagnostics" })
 
@@ -323,17 +362,11 @@ function M.setup()
     desc = "Auto-scan diagnostics on save",
   })
 
-  -- Initial scan 3s after Neovim starts (let LSP attach first)
-  vim.api.nvim_create_autocmd("VimEnter", {
-    group = group,
-    once = true,
-    callback = function()
-      vim.defer_fn(function()
-        M.scan()
-      end, 3000)
-    end,
-    desc = "Initial project diagnostics scan",
-  })
+  -- Initial scan 5s after Neovim starts (let LSP attach first, then scan)
+  -- defer_fn est fiable même headless (VimEnter ne se déclenche pas toujours)
+  vim.defer_fn(function()
+    M.scan()
+  end, 5000)
 end
 
 return M

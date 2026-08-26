@@ -1,5 +1,22 @@
 return {
-  { "rcarriga/nvim-notify", config = function() vim.notify = require("notify") end },
+  -- Toasts rapides (nvim-notify). timeout = 1500ms au lieu de 5000ms par défaut
+  {
+    "rcarriga/nvim-notify",
+    opts = {
+      timeout = 1500,
+      stages = "fade_in_slide_out",
+      max_height = function() return 12 end,
+      max_width = function() return 72 end,
+      on_open = function(win)
+        vim.api.nvim_win_set_option(win, "winblend", 10)
+      end,
+    },
+    config = function(_, opts)
+      local notify = require("notify")
+      notify.setup(opts)
+      vim.notify = notify
+    end,
+  },
   -- Noice for UI and centralized Commands
   {
     "folke/noice.nvim",
@@ -19,6 +36,47 @@ return {
       },
     },
     dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify" },
+  },
+  -- Mason : ajoute son dossier bin/ au PATH sinon les binaires installés
+  -- (tailwindcss-language-server, etc.) ne sont jamais trouvés par lspconfig.
+  {
+    "mason-org/mason.nvim",
+    cmd = { "Mason", "MasonInstall", "MasonUninstall", "MasonUpdate", "MasonUninstallAll" },
+    event = "VeryLazy",
+    opts = {
+      PATH = "prepend",
+      max_concurrent_installers = 10,
+      ui = {
+        icons = {
+          package_pending = " ",
+          package_installed = " ",
+          package_uninstalled = " ",
+        },
+      },
+    },
+  },
+  -- Installe automatiquement les serveurs LSP manquants (une seule fois)
+  -- NB : automatic_enable = false — l'activation des serveurs est gérée
+  -- de manière DIFFÉRÉE par configs/lspconfig.lua (autocmd FileType après
+  -- l'ouverture complète de nvim). Sinon mason-lspconfig activerait TOUS
+  -- les serveurs dès son chargement (VeryLazy), ce qui bloque le boot.
+  {
+    "williamboman/mason-lspconfig.nvim",
+    event = "VeryLazy",
+    dependencies = { "mason-org/mason.nvim", "neovim/nvim-lspconfig" },
+    opts = {
+      ensure_installed = {
+        "html",
+        "cssls",
+        "tailwindcss",
+        "prismals",
+        "angularls",
+        "ts_ls",
+        "lua_ls",
+        "eslint",
+      },
+      automatic_enable = false,
+    },
   },
   -- LSP Principal (Tout est ici maintenant)
   {
