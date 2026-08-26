@@ -1,7 +1,6 @@
 # ==============================================================================
 # ZSH COMPLEX FUNCTIONS
 # ==============================================================================
-
 # OS Agnostic System Functions
 sys-update() {
   echo "🔄 System Update..."
@@ -388,4 +387,73 @@ wt-new() {
   echo "🚀 Worktree ready! cd into it with:"
   echo "   cd $wt_path"
   echo ""
+}
+
+# ==============================================================================
+# 📦 BRS — Multi-package.json Script Runner (monorepo aware, bun-first)
+# ==============================================================================
+# Scan TOUS les package.json du repo (racine, backend/, frontend/, apps/…),
+# regroupe les scripts PAR PROJET dans fzf, puis lance le script choisi avec
+# le bon package manager :
+#   bun.lock / bun.lockb  -> bun
+#   pnpm-lock.yaml        -> pnpm
+#   yarn.lock             -> yarn
+#   package-lock.json     -> npm
+#   (rien)                -> bun (préférence)
+#
+# Usage :  brs [dossier]        (dossier = racine du repo ou sous-dossier)
+# Variables : BRS_DEPTH=3       (profondeur max de recherche des package.json)
+brs() {
+  emulate -L zsh
+  if ! command -v fzf >/dev/null 2>&1; then echo "❌ fzf est requis pour brs"; return 1; fi
+  if ! command -v bun >/dev/null 2>&1; then echo "❌ bun est requis pour brs"; return 1; fi
+
+  local root="${1:-$PWD}"
+  root=$(cd "$root" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+
+  local list_file=$(mktemp)
+  local pkg dir name pm pkgs
+
+  pkgs=$(find "$root" -maxdepth ${BRS_DEPTH:-3} -name package.json \
+    -not -path '*/node_modules/*' -not -path '*/.angular/*' \
+    -not -path '*/dist/*' -not -path '*/.next/*' -not -path '*/.nitro/*')
+
+  for pkg in ${(f)pkgs}; do
+    dir=${pkg:A:h}
+    if [[ "$dir" == "${root:A}" ]]; then name="🏠 racine"; else name="📦 ${dir:t}"; fi
+    if   [[ -f "$dir/bun.lock" || -f "$dir/bun.lockb" ]]; then pm="bun"
+    elif [[ -f "$dir/pnpm-lock.yaml" ]]; then pm="pnpm"
+    elif [[ -f "$dir/yarn.lock" ]]; then pm="yarn"
+    elif [[ -f "$dir/package-lock.json" ]]; then pm="npm"
+    else pm="bun"
+    fi
+    # Liste les scripts : "projet<TAB>script<TAB>commande<TAB>manager<TAB>dossier"
+    bun -e "const p=require('${pkg}');const s=p.scripts||{};for(const k of Object.keys(s))console.log('${name}\t'+k+'\t'+String(s[k]).replace(/\\n/g,' ')+'\t${pm}\t${dir}')" >> "$list_file"
+  done
+
+  if [[ ! -s "$list_file" ]]; then
+    rm -f "$list_file"
+    echo "⚠️  Aucun script trouvé dans $root (vérifie qu'il y a des package.json avec un champ scripts)"
+    return 1
+  fi
+
+  local choice
+  choice=$(fzf --delimiter='\t' --with-nth=1,2,3 \
+    --prompt='🚀 script à lancer > ' \
+    --header=$'projet │ script │ commande' \
+    --preview='echo {}; awk -F"\t" "{print \"Projet   : \"\$1; print \"Script   : \"\$2; print \"Commande : \"\$3; print \"Manager  : \"\$4; print \"Dossier  : \"\$5}"' \
+    --preview-window=down:6 < "$list_file")
+  local rc_fzf=$?
+  rm -f "$list_file"
+  [[ $rc_fzf -ne 0 || -z "$choice" ]] && return 0   # Esc / Ctrl-C
+
+  local name script cmd pm_sel dir_sel
+  IFS=$'\t' read -r name script cmd pm_sel dir_sel <<< "$choice"
+
+  echo "🚀 [$pm_sel] $name › $script"
+  pushd "$dir_sel" >/dev/null || return 1
+  "$pm_sel" run "$script"
+  local rc=$?
+  popd >/dev/null
+  return $rc
 }

@@ -207,6 +207,7 @@ alias ngs='ng cache clean && bun run start'
 # pnpm
 alias p='pnpm'
 alias pi='pnpm install'
+alias pif='pnpm install --frozen-lockfile' # install reproductible (frozen lockfile)
 alias pa='pnpm add'
 alias pad='pnpm add -D'
 alias prm='pnpm remove'
@@ -352,6 +353,24 @@ dotenv-show() { echo "📄 Showing env variables from ${1:-.env}:"; cat ${1:-.en
 # Reload config without losing session
 alias reload-safe='exec zsh'
 
+
+# ==============================================================================
+# 🧩 OPTIONAL MODULES (Sourced if enabled during installation)
+# ==============================================================================
+# 📦 JS/TS RUNNER — @antfu/ni (bun-first) 🚀
+# ==============================================================================
+# Détecte automatiquement le package manager via le lockfile
+# (bun.lock → bun, pnpm-lock.yaml → pnpm, yarn.lock → yarn, sinon npm)
+# `nr` sans argument = picker interactif des scripts du package.json
+# (équivalent terminal de <leader>rr dans nvim). Ajouter '?' = dry-run.
+alias br='nr'                 # picker interactif des scripts
+alias blint='nr lint'         # lint
+alias bfmt='nr format'        # formatage (fallback: nr format:check)
+alias btest='nr test'         # tests
+alias be2e='nr e2e'           # tests e2e
+alias bbuild='nr build'       # build
+alias bdev='nr dev'           # serveur de dev (next/angular/nest)
+alias bstart='nr start'       # prod / nest start
 
 # ==============================================================================
 # 🧩 OPTIONAL MODULES (Sourced if enabled during installation)
