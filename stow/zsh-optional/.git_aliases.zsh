@@ -78,7 +78,7 @@ galias() { git config --get-regexp alias; }
 upstream-sync() {
   local main_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
   main_branch=${main_branch:-main}
-  echo "🔄 Sync with upstream/$main_branch..."
+  echo "🔄 Syncing with upstream/$main_branch..."
   git checkout $main_branch && git fetch upstream && git merge upstream/$main_branch --ff-only && git push origin $main_branch
   echo "✅ Fork synchronized!"
 }

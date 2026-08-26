@@ -70,7 +70,7 @@ nggnew() {
   local name=$1
   local path=${2:-.}
   ng g component $path/$name --standalone --style=scss --change-detection=OnPush
-  echo "✅ Component ✅ Component '$name' generated in generated in $path"
+  echo "✅ Component '$name' generated in $path"
 }
 
 # Angular update

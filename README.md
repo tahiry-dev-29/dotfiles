@@ -6,7 +6,7 @@ A centralized repository to instantly backup and restore my development environm
 
 ### 1. 📝 Neovim (NvChad)
 A highly customized Neovim configuration based on **NvChad (v2.5)** with specific enhancements:
-- **LSP Configuration for Nx Monorepos**: TypeScript Language Server (`ts_ls`) is configured to perfectly understand Nx monorepos, correctly resolving paths from `nx.json` or `tsconfig.base.json` down to framework specific files (`angular.json`, `next.config.js`, etc.).
+- **LSP Configuration for Nx Monorepos**: TypeScript Language Server (`ts_ls`) is configured to perfectly understand Nx monorepos, correctly resolving paths from `nx.json` or `tsconfig.base.json` down to framework-specific files (`angular.json`, `next.config.js`, etc.).
 - **Trunk Linter Integration**: Integrated floating terminal (`<C-t>`) to run `trunk check --show-existing` natively inside Neovim.
 - **Diagnostics UI**: Custom "Problems" workspace (`<C-j>`) via Trouble.nvim, and clear sidebar margin icons.
 - **Interconnected Ecosystem**: Directly launch terminal UI tools from within Neovim via floating terminals:
@@ -23,7 +23,7 @@ Les serveurs LSP suivants sont actifs en insertion via `nvim-cmp` : `html`, `css
 **Pour installer les serveurs manquants** (une seule fois) :
 
 ```bash
-# Option A — via Mason (dans Neovim, une fois lancement)
+# Option A — via Mason (dans Neovim, une fois lancé)
 :MasonInstall html-lsp css-lsp tailwindcss-language-server prisma-language-server angular-language-server typescript-language-server eslint-lsp
 
 # Option B — via npm global (binaires directement sur le PATH)
