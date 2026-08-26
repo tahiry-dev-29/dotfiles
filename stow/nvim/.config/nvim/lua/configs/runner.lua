@@ -1,31 +1,21 @@
 local M = {}
 
+local project = require "configs.project"
+
+--- Racine Node : détectée dynamiquement (ancêtre + recherche rg vers le bas).
 function M.find_root()
-  local cwd = vim.fn.getcwd()
-  local prev = ""
-  local dir = cwd
-  while dir ~= prev do
-    if vim.fn.filereadable(dir .. "/package.json") == 1 then
-      return dir
-    end
-    prev = dir
-    dir = vim.fn.fnamemodify(dir, ":h")
-  end
-  return cwd
+  return project.node_root()
 end
 
 function M.detect_runner()
-  local root = M.find_root()
-  if vim.fn.filereadable(root .. "/bun.lock") == 1
-    or vim.fn.filereadable(root .. "/bun.lockb") == 1 then
-    return "bun"
-  end
-  if vim.fn.filereadable(root .. "/pnpm-lock.yaml") == 1 then
-    return "pnpm"
-  end
-  if vim.fn.filereadable(root .. "/yarn.lock") == 1 then
-    return "yarn"
-  end
+  local start = project.start_dir()
+  -- Les lockfiles peuvent se trouver à la racine du monorepo (au-dessus).
+  local b = project.find_up(start, { "bun.lockb", "bun.lock" })
+  if b then return "bun" end
+  local p = project.find_up(start, { "pnpm-lock.yaml" })
+  if p then return "pnpm" end
+  local y = project.find_up(start, { "yarn.lock" })
+  if y then return "yarn" end
   return "npm"
 end
 
@@ -82,7 +72,19 @@ end
 function M.pick()
   local scripts = M.get_scripts()
   if not scripts then
-    vim.notify("No package.json or scripts found", vim.log.levels.WARN)
+    -- Aucun package.json : on lance le scanner auto des diagnostics (DiagScan)
+    -- au lieu d'un toast sans issue, et on l'indique.
+    local root = M.find_root()
+    local ok_diag = pcall(require, "configs.diagnostics")
+    vim.notify(
+      "Aucun package.json (racine: " .. root .. "). Lancement du scanner auto des diagnostics…",
+      vim.log.levels.INFO
+    )
+    if ok_diag then
+      vim.schedule(function()
+        require("configs.diagnostics").scan()
+      end)
+    end
     return
   end
   local items = {}
