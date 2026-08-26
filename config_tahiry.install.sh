@@ -126,7 +126,7 @@ echo ""
 echo "-----------------------------------------------"
 
 declare -A wants
-apps=("nvim" "trunk" "lazygit" "lazydocker" "zsh" "fish" "ghostty" "eslint")
+apps=("nvim" "trunk" "lazygit" "lazydocker" "zsh" "fish" "ghostty" "eslint" "herdr")
 
 for app in "${apps[@]}"; do
     read -p "  [?] Install $app ? [Y/n] " response
@@ -149,6 +149,24 @@ for app in "nvim" "trunk" "lazygit" "lazydocker" "fish" "ghostty" "eslint"; do
         stow_app "$app" "$HOME"
     fi
 done
+
+
+# HERDR Specific Logic (back up a live config first so `stow` won't conflict)
+if [ "${wants[herdr]}" = true ] && [ -d "$DOTFILES_DIR/stow/herdr" ]; then
+    echo ""
+    echo "🦬 Setting up Herdr (terminal workspace manager for AI coding agents)..."
+    # A running Herdr creates real config files. Stow refuses to overwrite a
+    # non-symlink, so back up any existing config before linking the tracked one.
+    for _f in "$HOME/.config/herdr/config.toml" "$HOME/.config/herdr/bin/command-palette.sh"; do
+        if [ -e "$_f" ] && [ ! -L "$_f" ]; then
+            _bak="${_f}.bak.${CURRENT_DATE}"
+            mkdir -p "$(dirname "$_bak")"
+            cp -a "$_f" "$_bak"
+            echo "  📦 Backed up existing $_f -> $_bak"
+        fi
+    done
+    stow_app "herdr" "$HOME"
+fi
 
 
 # ZSH Specific Logic

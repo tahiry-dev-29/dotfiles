@@ -1,0 +1,40 @@
+onboarding = false
+
+[worktrees]
+# Root dir under which Herdr creates <repo>/<branch-slug> worktree checkouts
+directory = "~/Projects/worktrees-workspaces"
+
+[theme]
+name = "vesper"
+auto_switch = false
+
+[ui.toast]
+delivery = "herdr"
+
+[ui]
+show_agent_labels_on_pane_borders = true
+
+agent_panel_sort = "spaces"
+status_indicators = "symbols"
+[keys]
+prefix = "ctrl+a"
+previous_workspace = "prefix+left"
+next_workspace = "prefix+right"
+
+[[keys.command]]
+key = "prefix+shift+a"
+type = "popup"
+command = "sh $HOME/.config/herdr/bin/command-palette.sh"
+description = "command palette"
+
+[[keys.command]]
+key = "prefix+shift+b"
+type = "popup"
+command = "herdr plugin action invoke herdr-sidebar.open-sidebar"
+description = "toggle sidebar"
+
+[[keys.command]]
+key = "prefix+shift+m"
+type = "popup"
+command = "herdr plugin action invoke quick-start --plugin herdr-mobile-relay.events"
+description = "mobile relay quick start"
