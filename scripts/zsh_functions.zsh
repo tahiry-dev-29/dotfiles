@@ -415,7 +415,7 @@ brs() {
   root=$(cd "$root" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
 
   local list_file=$(mktemp)
-  local pkg dir name pm pkgs
+  local pkg dir name pm pkgs script cmd total i failed pm_sel dir_sel
 
   pkgs=$(find "$root" -maxdepth ${BRS_DEPTH:-3} -name package.json \
     -not -path '*/node_modules/*' -not -path '*/.angular/*' \
@@ -441,7 +441,7 @@ brs() {
   fi
 
   local choice
-  choice=$(fzf --multi --delimiter='\t' --with-nth=1,2,3 \
+  choice=$(fzf --multi --delimiter=$'\t' --with-nth=1,2,3 \
     --prompt='🚀 scripts (TAB = multi-sélection) > ' \
     --header=$'projet │ script │ commande' \
     --preview='awk -F"\t" "{print \"Projet   : \"\$1; print \"Script   : \"\$2; print \"Commande : \"\$3; print \"Manager  : \"\$4; print \"Dossier  : \"\$5}"' \
@@ -451,8 +451,9 @@ brs() {
   [[ $rc_fzf -ne 0 || -z "$choice" ]] && return 0   # Esc / Ctrl-C
 
   # ── Exécution SÉQUENTIELLE de tous les scripts sélectionnés ──
-  local total=$(printf '%s\n' "$choice" | grep -c .)
-  local i=0 failed=0 name script cmd pm_sel dir_sel
+  total=$(printf '%s\n' "$choice" | grep -c .)
+  i=0
+  failed=0
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
@@ -461,6 +462,9 @@ brs() {
     IFS=$'\t' read -r name script cmd pm_sel dir_sel <<< "$line"
     echo ""
     echo "═══════ [$i/$total] 🚀 [$pm_sel] $name › $script ═══════"
+    if [[ "$script" =~ ^(dev|serve|server|watch|preview|start)$ ]]; then
+      echo "ℹ️  Script long-running détecté (serveur/dev) — il tourne jusqu'au Ctrl-C."
+    fi
     if ! pushd "$dir_sel" >/dev/null 2>&1; then
       echo "❌ Dossier introuvable: $dir_sel"; (( failed++ )); continue
     fi
