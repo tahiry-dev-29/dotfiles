@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec bash "$HOME/dotfiles/scripts/git-worktree-auto.sh" remove "$@"

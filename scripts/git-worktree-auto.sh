@@ -35,11 +35,24 @@ log_warn()    { _log "WARN"    "$YELLOW" "⚠️ " "$@"; }
 log_error()   { _log "ERROR"   "$RED"    "❌" "$@"; }
 log_step()    { _log "STEP"    "$BLUE"   "▶" "$@"; }
 
+# Run project-local verification checks (e.g. trunk.io, shucky) after a PR is
+# opened, so their output is visible in the streamed log.
+run_gwt_local_checks() {
+  if command -v trunk >/dev/null 2>&1; then
+    log_step "Running local checks: trunk check"
+    trunk check 2>&1 || log_warn "trunk check reported issues"
+  fi
+  if command -v shucky >/dev/null 2>&1; then
+    log_step "Running local checks: shucky"
+    shucky 2>&1 || log_warn "shucky reported issues"
+  fi
+}
+
 _divider() { echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${RESET}"; }
 _divider_end() { echo -e "${CYAN}╚══════════════════════════════════════════════════════╝${RESET}"; }
 
-# Réponse mémorisée : le 1er y/n s'applique à TOUTES les questions suivantes
-# de la session (comportement "répondre une seule fois").
+# Memoized response: the first y/n applies to ALL subsequent prompts
+# in the session (answer-once behavior).
 GWT_CONFIRM_CHOICE=""
 
 _confirm() {
@@ -48,9 +61,9 @@ _confirm() {
     printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}y (auto)\n"
     return 0
   fi
-  # Une réponse a déjà été donnée dans cette session → on la réutilise
+  # A response was already given in this session → reuse it
   if [[ -n "$GWT_CONFIRM_CHOICE" ]]; then
-    printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}${GWT_CONFIRM_CHOICE} (mémo)\n"
+    printf "${YELLOW}❓ ${prompt} [y/N] ${RESET}${GWT_CONFIRM_CHOICE} (memo)\n"
     [[ "$GWT_CONFIRM_CHOICE" == "y" ]]
     return $?
   fi
@@ -59,9 +72,9 @@ _confirm() {
   read -r reply
   case "$reply" in
     a|A)
-      # 'a' = appliquer OUI à toutes les questions suivantes
+      # 'a' = apply YES to all remaining prompts
       GWT_CONFIRM_CHOICE="y"
-      printf "${CYAN}   ↳ 'a' = oui pour tout le reste de cette session${RESET}\n"
+      printf "${CYAN}   ↳ 'a' = yes for all remaining prompts in this session${RESET}\n"
       return 0
       ;;
     y|Y)
@@ -178,7 +191,7 @@ cmd_create() {
   if [[ -f "$wt_path/package.json" ]]; then
     _confirm "Run pnpm install in $wt_path?" && {
       log_step "Running pnpm install..."
-      (cd "$wt_path" && pnpm install) && log_success "pnpm install complete." || log_warn "pnpm install had issues."
+      (cd "$wt_path" && pnpm install --frozen-lockfile) && log_success "pnpm install complete." || log_warn "pnpm install had issues."
     }
   fi
 
@@ -283,6 +296,8 @@ cmd_pr_flow() {
     else
       log_warn "gh CLI not found. Open GitHub to create your PR for branch: $current_branch"
     fi
+
+    run_gwt_local_checks
   )
 }
 

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# gwt — Git Worktree helper. Dispatches to git-worktree-auto.sh.
+# Supports: new, rm, pr, cleanup, list
+set -uo pipefail
+SCRIPT="$HOME/dotfiles/scripts/git-worktree-auto.sh"
+[[ -x "$SCRIPT" ]] || { echo "git-worktree-auto.sh not found" >&2; exit 1; }
+exec bash "$SCRIPT" "$@"

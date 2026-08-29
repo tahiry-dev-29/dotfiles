@@ -38,3 +38,10 @@ key = "prefix+shift+m"
 type = "popup"
 command = "herdr plugin action invoke quick-start --plugin herdr-mobile-relay.events"
 description = "mobile relay quick start"
+
+[[keys.command]]
+key = "prefix+shift+g"
+type = "plugin_action"
+command = "gwt-worktree.manager"
+description = "gwt: manage worktrees (fzf)"
+

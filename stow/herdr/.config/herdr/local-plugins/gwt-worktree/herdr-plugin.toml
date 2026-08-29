@@ -1,0 +1,26 @@
+id = "gwt-worktree"
+name = "GWT Worktree Setup"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Auto-setup (.env + pnpm frozen) for new Herdr worktrees and gwt fzf manager"
+platforms = ["linux", "macos"]
+
+[[events]]
+on = "worktree.created"
+command = ["bash", "on-created.sh"]
+
+[[actions]]
+id = "manager"
+title = "gwt: manage worktrees"
+contexts = ["workspace"]
+command = ["bash", "open-pane.sh"]
+
+[[panes]]
+id = "manager"
+title = "gwt worktrees"
+placement = "zoomed"
+# NOTE: Herdr resolves pane commands relative to the execution cwd (the
+# repo), not the plugin directory. A relative path → "no such file" (exit
+# 127) and the pane closes instantly. So we use
+# HERDR_PLUGIN_ROOT, injected by Herdr into plugin entrypoints.
+command = ["bash", "-c", "exec bash \"${HERDR_PLUGIN_ROOT:-$HOME/.config/herdr/local-plugins/gwt-worktree}/manager.sh\""]
