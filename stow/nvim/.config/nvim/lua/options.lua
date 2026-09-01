@@ -19,6 +19,6 @@ vim.opt.swapfile = false
 vim.opt.backup = false
 vim.opt.writebackup = false
 
--- Sauvegarde automatique quand on change de buffer ou qu'on perd le focus
+-- Auto-save when changing buffer or losing focus
 vim.opt.autowrite = true
 vim.opt.autowriteall = true

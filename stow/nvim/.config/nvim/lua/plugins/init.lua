@@ -1,5 +1,5 @@
 return {
-  -- Toasts rapides (nvim-notify). timeout = 1500ms au lieu de 5000ms par défaut
+  -- Fast toasts (nvim-notify). timeout = 1500ms instead of default 5000ms
   {
     "rcarriga/nvim-notify",
     opts = {
@@ -37,8 +37,8 @@ return {
     },
     dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify" },
   },
-  -- Mason : ajoute son dossier bin/ au PATH sinon les binaires installés
-  -- (tailwindcss-language-server, etc.) ne sont jamais trouvés par lspconfig.
+  -- Mason: adds its bin/ folder to PATH so installed binaries
+  -- (tailwindcss-language-server, etc.) are found by lspconfig.
   {
     "mason-org/mason.nvim",
     cmd = { "Mason", "MasonInstall", "MasonUninstall", "MasonUpdate", "MasonUninstallAll" },
@@ -55,11 +55,11 @@ return {
       },
     },
   },
-  -- Installe automatiquement les serveurs LSP manquants (une seule fois)
-  -- NB : automatic_enable = false — l'activation des serveurs est gérée
-  -- de manière DIFFÉRÉE par configs/lspconfig.lua (autocmd FileType après
-  -- l'ouverture complète de nvim). Sinon mason-lspconfig activerait TOUS
-  -- les serveurs dès son chargement (VeryLazy), ce qui bloque le boot.
+  -- Automatically installs missing LSP servers (one-time)
+  -- NOTE: automatic_enable = false — server activation is handled
+  -- DEFERRED by configs/lspconfig.lua (FileType autocmd after
+  -- nvim fully opens). Otherwise mason-lspconfig would activate ALL
+  -- servers on its load (VeryLazy), which blocks boot.
   {
     "williamboman/mason-lspconfig.nvim",
     event = "VeryLazy",
@@ -78,7 +78,7 @@ return {
       automatic_enable = false,
     },
   },
-  -- LSP Principal (Tout est ici maintenant)
+  -- Main LSP (everything is here now)
   {
     "neovim/nvim-lspconfig",
     config = function()
@@ -86,7 +86,7 @@ return {
     end,
   },
 
-  -- Vos outils VS Code
+  -- Your VS Code tools
   { "nvim-telescope/telescope.nvim", cmd = "Telescope" },
   {
     "folke/trouble.nvim",
@@ -131,7 +131,7 @@ return {
     },
   },
 
-  -- GitHub Copilot (local, pas de téléchargement)
+  -- GitHub Copilot (local, no download)
   {
     dir = vim.fn.stdpath("config") .. "/pack/github/start/copilot.vim",
     event = "InsertEnter",

@@ -65,7 +65,7 @@ alias nggen='ng g enum'
 alias nggcl='ng g class'
 alias nggif='ng g interface'
 
-# Generators avec options Angular moderne (standalone + scss + OnPush)
+# Generators with modern Angular options (standalone + scss + OnPush)
 nggnew() {
   local name=$1
   local path=${2:-.}

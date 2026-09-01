@@ -1,18 +1,18 @@
--- NB : la configuration visuelle des diagnostics (virtual_text, signs,
--- float…) est centralisée dans init.lua — section 3 — pour éviter tout
--- conflit entre deux vim.diagnostic.config.
+-- NOTE: visual diagnostic configuration (virtual_text, signs,
+-- float…) is centralized in init.lua — section 3 — to avoid any
+-- conflict between two vim.diagnostic.config.
 
 -- =====================================================================
--- IMPORTANT : capabilities de completion pour nvim-cmp.
--- Neovim applique cette config `*` à TOUS les serveurs LSP. Sans ça,
--- la source `nvim_lsp` de nvim-cmp n'annonce pas les capacités attendues
--- et aucune autocomplétion LSP n'apparaît en mode insert.
+-- IMPORTANT: completion capabilities for nvim-cmp.
+-- Neovim applies this config `*` to ALL LSP servers. Without it,
+-- the `nvim_lsp` source in nvim-cmp doesn't announce expected capabilities
+-- and no LSP autocompletion appears in insert mode.
 -- =====================================================================
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 vim.lsp.config("*", {
   capabilities = capabilities,
-  -- Désactive les semantic tokens (évite des rafraîchissements parasites)
+  -- Disables semantic tokens (avoids spurious refreshes)
   on_init = function(client)
     if client.supports_method and client:supports_method("textDocument/semanticTokens") then
       client.server_capabilities.semanticTokensProvider = nil
@@ -20,8 +20,8 @@ vim.lsp.config("*", {
   end,
 })
 
--- Fallback : permet à typescript-language-server de trouver `tsserver`
--- (et aux autres outils) quand le projet n'a pas de `typescript` local.
+-- Fallback: allows typescript-language-server to find `tsserver`
+-- (and other tools) when the project doesn't have a local `typescript`.
 local npm_root = vim.fn.system("npm root -g"):gsub("%s+", "")
 if npm_root ~= "" and vim.fn.isdirectory(npm_root) == 1 then
   local node_path = vim.env.NODE_PATH or ""
@@ -30,7 +30,7 @@ if npm_root ~= "" and vim.fn.isdirectory(npm_root) == 1 then
   end
 end
 
--- Racines de projet partagées (JS/TS/Angular/Nx)
+-- Shared project roots (JS/TS/Angular/Nx)
 local root_markers = {
   "nx.json",
   "angular.json",
@@ -43,19 +43,19 @@ local root_markers = {
   "package.json",
 }
 
--- NOTE : on ne touche PAS au champ `cmd` des serveurs. Les binaires réels
--- sont (installés via Mason ou npm -g) :
+-- NOTE: we do NOT touch the `cmd` field of servers. The actual binaries
+-- are (installed via Mason or npm -g):
 --   html        -> vscode-html-language-server --stdio
 --   cssls       -> vscode-css-language-server --stdio
 --   tailwindcss -> tailwindcss-language-server --stdio
 --   prismals    -> prisma-language-server --stdio
 --   angularls   -> ngserver --stdio ...
 --   dartls      -> dart language-server --protocol=lsp
--- L'ancien `cmd = { name, "--stdio" }` faisait échouer le démarrage de
--- chaque serveur (d'où l'absence d'autocomplétion et les erreurs E433/E426).
+-- The old `cmd = { name, "--stdio" }` caused server startup to fail
+-- (hence missing autocompletion and E433/E426 errors).
 local servers = { "html", "cssls", "tailwindcss", "prismals" }
 
--- Filetypes par serveur (pour activation différée via FileType)
+-- Filetypes per server (for deferred FileType activation)
 local server_filetypes = {
   html = { "html", "templ" },
   cssls = { "css", "scss", "sass", "less" },
@@ -63,23 +63,23 @@ local server_filetypes = {
   prismals = { "prisma" },
 }
 
--- On enregistre uniquement la CONFIGURATION des serveurs (léger, pas de
--- démarrage de processus). L'activation réelle (vim.lsp.enable) est différée
--- via un autocmd FileType/BufReadPost dans M.setup(), donc après l'ouverture
--- complète de Neovim, jamais pendant le boot.
+-- We only register the SERVER CONFIGURATION (lightweight, no
+-- process startup). Actual activation (vim.lsp.enable) is deferred
+-- via a FileType/BufReadPost autocmd in M.setup(), so after Neovim
+-- fully opens, never during boot.
 for _, name in ipairs(servers) do
   vim.lsp.config(name, { root_markers = root_markers })
 end
 
--- Angular : ne s'attache que si le projet a un angular.json (sinon ngserver
--- tournerait inutilement sur chaque projet TS / Next / Nx non-Angular)
+-- Angular: only attaches if the project has angular.json (otherwise ngserver
+-- would run pointlessly on every non-Angular TS / Next / Nx project)
 vim.lsp.config("angularls", { root_markers = { "angular.json" } })
 
--- Dart (Flutter) : garde sa racine native `pubspec.yaml`
+-- Dart (Flutter): keeps its native root `pubspec.yaml`
 vim.lsp.config("dartls", {})
 server_filetypes.dartls = { "dart" }
 
--- Configuration de TypeScript / JavaScript
+-- TypeScript / JavaScript configuration
 vim.lsp.config("ts_ls", {
   root_markers = root_markers,
   settings = {
@@ -90,10 +90,10 @@ vim.lsp.config("ts_ls", {
 })
 server_filetypes.ts_ls = { "typescript", "javascript", "typescriptreact", "javascriptreact" }
 
--- Angular : activé sur les templates/TS des projets Angular
+-- Angular: enabled for Angular project templates/TS
 server_filetypes.angularls = { "typescript", "javascript", "html", "angular" }
 
--- Configuration de ESLint (LSP, binaire : vscode-eslint-language-server)
+-- ESLint configuration (LSP, binary: vscode-eslint-language-server)
 vim.lsp.config("eslint", {
   settings = {
     workingDirectories = { mode = "auto" },
@@ -112,47 +112,47 @@ if vim.fn.executable("vscode-eslint-language-server") == 1 then
 end
 
 -- =====================================================================
--- ACTIVATION DIFFÉRÉE DES SERVEURS LSP
+-- DEFERRED LSP SERVER ACTIVATION
 --
--- Pourquoi : `vim.lsp.enable()` au chargement du fichier force Neovim à
--- tenter de démarrer chaque serveur dès qu'un buffer du type correspondant
--- est ouvert pendant le boot. Cela bloque l'UI, ralentit l'ouverture et
--- peut crasher si un binaire est manquant.
+-- Why: `vim.lsp.enable()` at file load forces Neovim to try starting
+-- each server as soon as a buffer of the matching type is opened during
+-- boot. This blocks the UI, slows opening, and can crash if a binary
+-- is missing.
 --
--- À la place, on installe un autocmd FileType qui n'active le serveur
--- QU'APRÈS l'ouverture complète de Neovim (VimEnter + defer). L'activation
--- est idempotente : si un buffer du bon type est déjà chargé, on l'attache
--- immédiatement, sinon on attend le prochain FileType.
+-- Instead, we install a FileType autocmd that only enables the server
+-- AFTER Neovim fully opens (VimEnter + defer). Activation is
+-- idempotent: if a buffer of the right type is already loaded, we
+-- attach immediately, otherwise we wait for the next FileType.
 -- =====================================================================
 
 local M = {}
 
-local enabled_servers = {} -- garde-fou : n'active un serveur qu'une fois
+local enabled_servers = {} -- guard: only enable a server once
 
--- Active TOUS les serveurs LSP configurés, sans condition de projet.
+-- Enables ALL configured LSP servers, no project condition.
 local function enable_server(server)
   if enabled_servers[server] then return end
   pcall(vim.lsp.enable, server)
   enabled_servers[server] = true
-  -- Neovim ne re-déclenche l'attachement des buffers existants que si
-  -- vim_did_enter/did_filetype (pas garantis en headless). On force
-  -- donc l'exécution de l'autocmd d'attachement de vim.lsp.enable.
+  -- Neovim only re-triggers attachment for existing buffers if
+  -- vim_did_enter/did_filetype (not guaranteed in headless). So we
+  -- force execution of vim.lsp.enable's attachment autocmd.
   pcall(function()
     vim.cmd.doautoall("nvim.lsp.enable FileType")
   end)
 end
 
 function M.setup()
-  -- ACTIVE ALL : tous les serveurs démarrent automatiquement après le boot,
-  -- peu importe le projet ou le fichier ouvert. Chaque serveur ne s'attachera
-  -- de lui-même qu'aux buffers dont le filetype correspond (comportement
-  -- natif de vim.lsp.enable), donc aucun processus inutile par fichier.
+  -- ENABLE ALL: all servers start automatically after boot,
+  -- regardless of the project or open file. Each server will only
+  -- attach to buffers whose filetype matches (native behavior of
+  -- vim.lsp.enable), so no unnecessary processes per file.
   for server in pairs(server_filetypes) do
     enable_server(server)
   end
 
-  -- Filet de sécurité : si un serveur était ajouté plus tard (ou échec au
-  -- boot), tout FileType déclenche une nouvelle tentative d'activation.
+  -- Safety net: if a server is added later (or failed at boot),
+  -- every FileType triggers a new activation attempt.
   vim.api.nvim_create_autocmd("FileType", {
     group = vim.api.nvim_create_augroup("LspDeferredAttach", { clear = true }),
     callback = function()
@@ -160,7 +160,7 @@ function M.setup()
         enable_server(server)
       end
     end,
-    desc = "Ré-essaie d'activer les serveurs LSP non encore activés",
+    desc = "Retry activating LSP servers not yet enabled",
   })
 end
 

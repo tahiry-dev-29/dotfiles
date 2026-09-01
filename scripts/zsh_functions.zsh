@@ -215,7 +215,7 @@ count-code() {
   local total=0
   local flagged=0
   echo "╔══════════════════════════════════════════"
-  echo "║  🔍 Audit .$ext  │  Limite: $limit lignes"
+  echo "║  🔍 Audit .$ext  │  Limit: $limit lines"
   echo "╚══════════════════════════════════════════"
   while IFS= read -r file; do
     local loc=$(wc -l < "$file")
@@ -228,7 +228,7 @@ count-code() {
     fi
   done < <(fd --extension "$ext" --exclude "{$ignore}" .)
   echo "──────────────────────────────────────────"
-  echo "  📊 Total: $total fichiers │ 🚨 To refactor: $flagged"
+  echo "  📊 Total: $total files │ 🚨 To refactor: $flagged"
 }
 
 _extract_log() {
@@ -392,24 +392,24 @@ wt-new() {
 # ==============================================================================
 # 📦 BRS — Multi-package.json Script Runner (monorepo aware, bun-first)
 # ==============================================================================
-# Scan TOUS les package.json du repo (racine, backend/, frontend/, apps/…),
-# regroupe les scripts PAR PROJET dans fzf, puis lance les scripts choisis
-# UN PAR UN avec le bon package manager :
+# Scans ALL package.json files in the repo (root, backend/, frontend/, apps/...),
+# groups scripts BY PROJECT in fzf, then runs the selected scripts
+# ONE BY ONE with the correct package manager:
 #   bun.lock / bun.lockb  -> bun
 #   pnpm-lock.yaml        -> pnpm
 #   yarn.lock             -> yarn
 #   package-lock.json     -> npm
-#   (rien)                -> bun (préférence)
+#   (none)                -> bun (default)
 #
-# Usage :  brs [dossier]     (dossier = racine du repo ou sous-dossier)
-# Multi-sélection : TAB pour cocher plusieurs scripts, Entrée pour tout
-# lancer séquentiellement. Rapport final succès/échecs à la fin.
-# Variables : BRS_DEPTH=3          (profondeur de recherche package.json)
-#             BRS_STOP_ON_ERROR=1  (arrêter au 1er échec au lieu de continuer)
+# Usage:  brs [dir]     (dir = repo root or subdirectory)
+# Multi-select: TAB to select multiple scripts, Enter to run all
+# sequentially. Final success/failure report at the end.
+# Variables: BRS_DEPTH=3          (package.json search depth)
+#            BRS_STOP_ON_ERROR=1  (stop on first failure instead of continuing)
 brs() {
   emulate -L zsh
-  if ! command -v fzf >/dev/null 2>&1; then echo "❌ fzf est requis pour brs"; return 1; fi
-  if ! command -v bun >/dev/null 2>&1; then echo "❌ bun est requis pour brs"; return 1; fi
+  if ! command -v fzf >/dev/null 2>&1; then echo "❌ fzf is required for brs"; return 1; fi
+  if ! command -v bun >/dev/null 2>&1; then echo "❌ bun is required for brs"; return 1; fi
 
   local root="${1:-$PWD}"
   root=$(cd "$root" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
@@ -423,34 +423,34 @@ brs() {
 
   for pkg in ${(f)pkgs}; do
     dir=${pkg:A:h}
-    if [[ "$dir" == "${root:A}" ]]; then name="🏠 racine"; else name="📦 ${dir:t}"; fi
+    if [[ "$dir" == "${root:A}" ]]; then name="🏠 root"; else name="📦 ${dir:t}"; fi
     if   [[ -f "$dir/bun.lock" || -f "$dir/bun.lockb" ]]; then pm="bun"
     elif [[ -f "$dir/pnpm-lock.yaml" ]]; then pm="pnpm"
     elif [[ -f "$dir/yarn.lock" ]]; then pm="yarn"
     elif [[ -f "$dir/package-lock.json" ]]; then pm="npm"
     else pm="bun"
     fi
-    # Liste : "projet<TAB>script<TAB>commande<TAB>manager<TAB>dossier"
+    # List: "project<TAB>script<TAB>command<TAB>manager<TAB>directory"
     bun -e "const p=require('${pkg}');const s=p.scripts||{};for(const k of Object.keys(s))console.log('${name}\t'+k+'\t'+String(s[k]).replace(/\\n/g,' ')+'\t${pm}\t${dir}')" >> "$list_file"
   done
 
   if [[ ! -s "$list_file" ]]; then
     rm -f "$list_file"
-    echo "⚠️  Aucun script trouvé dans $root"
+    echo "⚠️  No scripts found in $root"
     return 1
   fi
 
   local choice
   choice=$(fzf --multi --delimiter=$'\t' --with-nth=1,2,3 \
-    --prompt='🚀 scripts (TAB = multi-sélection) > ' \
-    --header=$'projet │ script │ commande' \
-    --preview='awk -F"\t" "{print \"Projet   : \"\$1; print \"Script   : \"\$2; print \"Commande : \"\$3; print \"Manager  : \"\$4; print \"Dossier  : \"\$5}"' \
+    --prompt='🚀 scripts (TAB = multi-select) > ' \
+    --header=$'project │ script │ command' \
+    --preview='awk -F"\t" "{print \"Project  : \"\$1; print \"Script   : \"\$2; print \"Command  : \"\$3; print \"Manager  : \"\$4; print \"Directory: \"\$5}"' \
     --preview-window=down:6 < "$list_file")
   local rc_fzf=$?
   rm -f "$list_file"
   [[ $rc_fzf -ne 0 || -z "$choice" ]] && return 0   # Esc / Ctrl-C
 
-  # ── Exécution SÉQUENTIELLE de tous les scripts sélectionnés ──
+  # ── SEQUENTIAL execution of all selected scripts ──
   total=$(printf '%s\n' "$choice" | grep -c .)
   i=0
   failed=0
@@ -463,18 +463,18 @@ brs() {
     echo ""
     echo "═══════ [$i/$total] 🚀 [$pm_sel] $name › $script ═══════"
     if [[ "$script" =~ ^(dev|serve|server|watch|preview|start)$ ]]; then
-      echo "ℹ️  Script long-running détecté (serveur/dev) — il tourne jusqu'au Ctrl-C."
+      echo "ℹ️  Long-running script detected (server/dev) — runs until Ctrl-C."
     fi
     if ! pushd "$dir_sel" >/dev/null 2>&1; then
-      echo "❌ Dossier introuvable: $dir_sel"; (( failed++ )); continue
+      echo "❌ Directory not found: $dir_sel"; (( failed++ )); continue
     fi
     "$pm_sel" run "$script"
     if (( $? != 0 )); then
       (( failed++ ))
-      echo "❌ Échec: [$name] $script"
+      echo "❌ Failed: [$name] $script"
       if [[ "${BRS_STOP_ON_ERROR:-0}" == 1 ]]; then
         popd >/dev/null
-        echo "⏹️  Arrêt demandé (BRS_STOP_ON_ERROR=1)"
+        echo "⏹️  Stopped (BRS_STOP_ON_ERROR=1)"
         return 1
       fi
     fi
@@ -483,9 +483,9 @@ brs() {
 
   echo ""
   if (( failed > 0 )); then
-    echo "📋 Terminé : $((total - failed))/$total réussi(s), ❌ $failed échec(s)"
+    echo "📋 Done: $((total - failed))/$total succeeded, ❌ $failed failed"
     return 1
   fi
-  echo "✅ Terminé : $total/$total réussi(s)"
+  echo "✅ Done: $total/$total succeeded"
   return 0
 }

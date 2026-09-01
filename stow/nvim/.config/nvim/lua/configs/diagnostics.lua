@@ -199,11 +199,11 @@ local function apply_diagnostics(all_results)
     -- Register the file as a buffer (no content loaded)
     local bufnr = vim.fn.bufadd(filename)
 
-    -- NB : pour un buffer NON CHARGÉ, vim.diagnostic.set() met les
-    -- diagnostics en cache interne ; ils ne sont visibles ni par
-    -- vim.diagnostic.get() ni par Trouble tant que le fichier n'est pas
-    -- ouvert. D'où l'alimentation PARALLÈLE de la quickfix ci-dessous :
-    -- c'est elle qui alimente le panneau Problems (<C-j>) façon VS Code.
+    -- NOTE: for an UNLOADED buffer, vim.diagnostic.set() stores
+    -- diagnostics in internal cache; they're not visible via
+    -- vim.diagnostic.get() or Trouble until the file is opened.
+    -- Hence the PARALLEL quickfix population below:
+    -- it feeds the Problems panel (<C-j>) like VS Code.
     vim.diagnostic.set(ns, bufnr, diags)
 
     for _, d in ipairs(diags) do
@@ -218,8 +218,8 @@ local function apply_diagnostics(all_results)
     end
   end
 
-  -- Fusionne les diagnostics LIVE des buffers ouverts (LSP, eslint LSP…)
-  -- pour que le panneau reflète aussi ce qui n'a pas encore été scanné.
+  -- Merge LIVE diagnostics from open buffers (LSP, eslint LSP…)
+  -- so the panel also reflects what hasn't been scanned yet.
   for _, d in ipairs(vim.diagnostic.get()) do
     if d.namespace ~= ns and vim.api.nvim_buf_is_valid(d.bufnr) then
       local name = vim.api.nvim_buf_get_name(d.bufnr)
@@ -308,8 +308,8 @@ function M.scan()
                 string.format("📋 Project —  %d   %d   %d", c.e, c.w, c.i),
                 vim.log.levels.WARN
               )
-              -- Auto-open Trouble panel on results (qflist = tous les
-              -- fichiers du projet, pas seulement ceux ouverts)
+              -- Auto-open Trouble panel on results (qflist = all
+              -- project files, not just open ones)
               pcall(function()
                 require("trouble").open("qflist", { focus = false })
               end)
@@ -363,7 +363,7 @@ function M.setup()
   })
 
   -- Initial scan 5s after Neovim starts (let LSP attach first, then scan)
-  -- defer_fn est fiable même headless (VimEnter ne se déclenche pas toujours)
+  -- defer_fn is reliable even headless (VimEnter doesn't always fire)
   vim.defer_fn(function()
     M.scan()
   end, 5000)

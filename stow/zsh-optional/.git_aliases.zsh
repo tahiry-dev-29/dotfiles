@@ -63,7 +63,7 @@ alias gwtl='git worktree list'
 alias gwtr='git worktree remove'
 
 # Automated worktree workflow script (Task #11)
-alias gwt-help='echo "🌿 Git Worktree Auto — aide" && bash ~/dotfiles/scripts/git-worktree-auto.sh'
+alias gwt-help='echo "🌿 Git Worktree Auto — help" && bash ~/dotfiles/scripts/git-worktree-auto.sh'
 alias gwt-new='bash ~/dotfiles/scripts/git-worktree-auto.sh create'
 alias gwt-list='bash ~/dotfiles/scripts/git-worktree-auto.sh list'
 alias gwt-rm='bash ~/dotfiles/scripts/git-worktree-auto.sh remove'

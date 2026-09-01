@@ -106,7 +106,8 @@ confirm() {
 go_to() {
   local target=$1
   local label="${MAIN_BRANCH:-main}"
-  if herdr worktree open --path "$target" --branch "$MAIN_BRANCH" --label "$label" --focus >/dev/null 2>&1; then
+  # NOTE: --path XOR --branch (see open_wt) — never pass both.
+  if herdr worktree open --path "$target" --label "$label" --focus >/dev/null 2>&1; then
     return
   fi
   # Fallback: focus existing tab or create one
@@ -123,11 +124,15 @@ go_to() {
 open_wt() {
   local path=$1 br=${2:-}
   local label="${br:-$(basename "$path")}"
-  if herdr worktree open --path "$path" --branch "$br" --label "$label" --focus >/dev/null 2>&1; then
+  # NOTE: `worktree open` takes --path XOR --branch — usage is
+  # `(--path PATH | --branch NAME)`; passing both is a usage error (exit 2).
+  local out
+  if out=$(herdr worktree open --path "$path" --label "$label" --focus 2>&1); then
     ok "opened $path"
     toast "Opened" "$path"
   else
     err "failed to open $path"
+    [[ -n "$out" ]] && err "$(head -n1 <<<"$out")"
     toast "Open failed" "$path"
   fi
 }
@@ -256,9 +261,8 @@ while :; do
     continue
   fi
   # Add PR symbol to status field: ● = has PR, ○ = no PR
-  local -a display_rows=()
+  display_rows=()
   for r in "${rows[@]}"; do
-    local has_pr_field status_field
     has_pr_field=$(cut -f7 <<<"$r")
     status_field=$(cut -f4 <<<"$r")
     if [[ "$has_pr_field" == "1" ]]; then

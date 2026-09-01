@@ -1,5 +1,5 @@
 return {
-  -- Git : Statut et Graphe
+  -- Git: Status and Graph
   {
     "lewis6991/gitsigns.nvim",
     event = "User FilePost",

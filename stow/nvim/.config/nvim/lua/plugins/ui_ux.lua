@@ -1,5 +1,5 @@
 return {
-  -- Coloration (Treesitter)
+  -- Syntax highlighting (Treesitter)
   {
     "nvim-treesitter/nvim-treesitter",
     event = { "BufReadPost", "BufNewFile" },
@@ -20,14 +20,14 @@ return {
     end,
   },
 
-  -- Panneau "Problems" comme VS Code
+  -- "Problems" panel like VS Code
   {
     "folke/trouble.nvim",
     cmd = "Trouble",
     opts = {},
   },
 
-  -- Formattage (Prettier)
+  -- Formatting (Prettier)
   {
     "stevearc/conform.nvim",
     event = "BufWritePre",
@@ -44,7 +44,7 @@ return {
     },
   },
 
-  -- Recherche Telescope
+  -- Telescope search
   {
     "nvim-telescope/telescope.nvim",
     opts = {

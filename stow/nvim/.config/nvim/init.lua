@@ -25,16 +25,15 @@ require "nvchad.autocmds"
 -- after VimEnter so the initial scan never blocks Neovim's startup)
 require("configs.diagnostics").setup()
 
--- 3.6 LSP SERVERS — activation différée (après l'ouverture complète de nvim)
--- La config des serveurs (vim.lsp.config) est déjà faite au chargement du
--- plugin lspconfig. Ici on enregistre uniquement l'autocmd FileType qui
--- activera chaque serveur QUAND un buffer du bon type sera ouvert, jamais
--- pendant le boot.
--- NB : vim.defer_fn est fiable même en mode headless (contrairement à
--- VimEnter), et M.setup() est idempotent (augroup clear + garde-fou).
--- IMPORTANT : on charge d'abord explicitement le plugin nvim-lspconfig
--- (lazy.nvim ne le charge pas tout seul), sinon vim.lsp.config(name, ...)
--- crée des entrées SANS cmd et les serveurs ne peuvent jamais démarrer.
+-- 3.6 LSP SERVERS — deferred activation (after nvim fully opens)
+-- Server config (vim.lsp.config) is already set at lspconfig plugin load time.
+-- Here we only register the FileType autocmd that will enable each server
+-- WHEN a buffer of the matching type is opened, never during boot.
+-- NOTE: vim.defer_fn is reliable even in headless mode (unlike VimEnter),
+-- and M.setup() is idempotent (augroup clear + guard).
+-- IMPORTANT: we explicitly load the nvim-lspconfig plugin first
+-- (lazy.nvim doesn't load it automatically), otherwise vim.lsp.config(name, ...)
+-- creates entries WITHOUT cmd and servers can never start.
 vim.defer_fn(function()
   local ok, err = pcall(function()
     require("lazy").load({ plugins = { "nvim-lspconfig", "mason.nvim", "mason-lspconfig.nvim" } })
@@ -45,21 +44,21 @@ vim.defer_fn(function()
   end
 end, 100)
 
--- 3. CONFIGURATION DES ERREURS VISUELLES (PROBLEMS) — STYLE VS CODE
+-- 3. VISUAL ERROR CONFIGURATION (PROBLEMS) — VS CODE STYLE
 --
--- Une seule source de vérité ici (l'ancien doublon dans configs/lspconfig.lua
--- est supprimé). Style "error lens" : le message s'affiche en fin de LA LIGNE
--- COURANTE uniquement — comme les hints inline de VS Code — pour rester
--- lisible sans noyer le fichier sous les annotations. <leader>dv bascule
--- l'affichage complet (toutes les lignes).
+-- Single source of truth here (the old duplicate in configs/lspconfig.lua
+-- has been removed). "Error lens" style: the message displays at the END of
+-- the CURRENT LINE only — like VS Code inline hints — to stay readable
+-- without drowning the file under annotations. <leader>dv toggles
+-- full display (all lines).
 local diag_icons = { Error = "", Warn = "", Hint = "󰌵 ", Info = "" }
 
 local function diagnostic_virtual_text(all_lines)
   return {
-    prefix = "", -- l'icône est déjà dans la marge (signs)
+    prefix = "", -- icon is already in the gutter (signs)
     spacing = 2,
     virt_text_pos = "eol",
-    current_line = not all_lines, -- false/nil = afficher toutes les lignes
+    current_line = not all_lines, -- false/nil = show all lines
     format = function(d)
       local code = d.user_data and d.user_data.lsp and d.user_data.lsp.code
       return code and ("%s [%s]"):format(d.message:gsub("\n", " "), code) or d.message:gsub("\n", " ")
@@ -78,11 +77,11 @@ vim.diagnostic.config({
     },
   },
   underline = true,
-  update_in_insert = true, -- VS Code met à jour pendant la frappe
+  update_in_insert = true, -- VS Code updates while typing
   severity_sort = true,
   float = {
     border = "rounded",
-    source = true, -- indique la source (tsc, eslint, ts_ls…)
+    source = true, -- show source (tsc, eslint, ts_ls…)
     header = "",
     prefix = "",
     format = function(d)
@@ -96,63 +95,62 @@ local show_all_inline = false
 function _G.DiagnosticToggleInline()
   show_all_inline = not show_all_inline
   vim.diagnostic.config({ virtual_text = diagnostic_virtual_text(show_all_inline) })
-  vim.notify(show_all_inline and "Diagnostics inline : TOUTES les lignes" or "Diagnostics inline : ligne courante", vim.log.levels.INFO)
+  vim.notify(show_all_inline and "Diagnostics inline: ALL lines" or "Diagnostics inline: current line", vim.log.levels.INFO)
 end
 
--- 4. FORCER LES RACCOURCIS (CTRL+J pour TOUTE la codebase)
+-- 4. FORCE KEYBINDS (CTRL+J for entire codebase)
 local map = vim.keymap.set
 
 vim.schedule(function()
-  -- Sidebar & Recherche
+  -- Sidebar & Search
   map("n", "<C-b>", "<cmd>NvimTreeToggle<CR>", { desc = "Sidebar" })
-  map("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Explorateur" })
+  map("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Explorer" })
   map("n", "<C-p>", "<cmd>Telescope find_files<CR>", { desc = "Find Files" })
   map({"n", "i", "v"}, "<C-S-p>", "<cmd>Telescope commands<CR>", { desc = "Command Palette" })
   map("n", "<C-f>", "<cmd>Telescope live_grep<CR>", { desc = "Search Project" })
   map({"n", "i", "v"}, "<C-S-f>", "<cmd>Telescope live_grep<CR>", { desc = "Search Project" })
-  map("n", "<leader>gw", function() require("telescope").extensions.git_worktree.git_worktrees() end, { desc = "Chercher et basculer de Git Worktree" })
+  map("n", "<leader>gw", function() require("telescope").extensions.git_worktree.git_worktrees() end, { desc = "Search and switch Git Worktree" })
   map("n", "<C-s>", "<cmd>w<CR>", { desc = "Save" })
   map("i", "<C-s>", "<cmd>w<CR><ESC>", { desc = "Save" })
 
-  -- Edition
+  -- Editing
   map({"n", "i", "v"}, "<C-z>", "<cmd>undo<CR>")
   map({"n", "i", "v"}, "<C-y>", "<cmd>redo<CR>")
   map({"n", "v"}, "<C-a>", "ggVG")
   
-  -- Copier/Couper/Coller
+  -- Copy/Cut/Paste
   map("v", "<C-c>", '"+y')
   map("v", "<C-x>", '"+d')
   map({"n", "i", "v"}, "<C-v>", '"+p')
 
-   -- PANNEAU DES ERREURS (WORKSPACE DIAGNOSTICS) — VS Code style
-   -- NB : on affiche la QUICKFIX (remplie par le scanner projet + les
-   -- diagnostics LSP live). Le mode "diagnostics" de Trouble ne voit que
-   -- les buffers OUVERTS, d'où les "No results" sur les erreurs des autres
-   -- fichiers du projet.
+   -- ERRORS PANEL (WORKSPACE DIAGNOSTICS) — VS Code style
+   -- NOTE: we display QUICKFIX (filled by the project scanner + live
+   -- LSP diagnostics). Trouble's "diagnostics" mode only sees
+   -- OPEN buffers, hence "No results" on errors from other files.
    map("n", "<C-j>", function()
      local ok = pcall(function()
        require("trouble").toggle({ mode = "qflist", focus = false })
      end)
      if not ok then
-       vim.notify("trouble.nvim non charge", vim.log.levels.ERROR)
+       vim.notify("trouble.nvim not loaded", vim.log.levels.ERROR)
      end
    end, { desc = "Project Problems (Workspace)" })
    map("n", "<leader>ds", "<cmd>DiagScan<CR>", { desc = "Scan Project Diagnostics" })
    map("n", "<leader>dc", "<cmd>DiagClear<CR>", { desc = "Clear Project Diagnostics" })
 
    -- NAVIGATION DIAGNOSTICS — style VS Code (F8 / Shift+F8)
-   map("n", "]d", function() vim.diagnostic.jump({ count = 1, float = true }) end, { desc = "Erreur suivante" })
-   map("n", "[d", function() vim.diagnostic.jump({ count = -1, float = true }) end, { desc = "Erreur précédente" })
-   map("n", "]e", function() vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR, float = true }) end, { desc = "Erreur (severity=error) suivante" })
-   map("n", "[e", function() vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR, float = true }) end, { desc = "Erreur (severity=error) précédente" })
-   -- Détail de l'erreur sous le curseur + liste loclist
-   map("n", "<leader>dd", vim.diagnostic.open_float, { desc = "Détail du diagnostic" })
+   map("n", "]d", function() vim.diagnostic.jump({ count = 1, float = true }) end, { desc = "Next error" })
+   map("n", "[d", function() vim.diagnostic.jump({ count = -1, float = true }) end, { desc = "Previous error" })
+   map("n", "]e", function() vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR, float = true }) end, { desc = "Next error (severity=error)" })
+   map("n", "[e", function() vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR, float = true }) end, { desc = "Previous error (severity=error)" })
+   -- Detail of error under cursor + loclist
+   map("n", "<leader>dd", vim.diagnostic.open_float, { desc = "Diagnostic detail" })
    map("n", "<leader>dl", vim.diagnostic.setloclist, { desc = "Diagnostics -> LocList" })
-   -- Basculer l'affichage inline : ligne courante <-> toutes les lignes
+   -- Toggle inline display: current line <-> all lines
    map("n", "<leader>dv", "<cmd>lua _G.DiagnosticToggleInline()<CR>", { desc = "Toggle Diagnostics Inline" })
 
-   -- HOVER AUTO : détail du diagnostic quand le curseur s'arrête sur une
-   -- ligne qui en contient une (équivalent du hover VS Code)
+   -- HOVER AUTO: show diagnostic detail when cursor stops on a
+   -- line that has one (equivalent of VS Code hover)
    vim.api.nvim_create_autocmd("CursorHold", {
      group = vim.api.nvim_create_augroup("DiagHoverAuto", { clear = true }),
      callback = function()
@@ -161,10 +159,10 @@ vim.schedule(function()
          pcall(vim.diagnostic.open_float, 0, { focus = false, scope = "line" })
        end
      end,
-     desc = "Affiche le diagnostic sous le curseur après un temps d'arrêt",
+      desc = "Show diagnostic under cursor after idle delay",
    })
 
-   -- Copier tout le texte du panneau Trouble avec 'y'
+   -- Copy all text from Trouble panel with 'y'
    vim.api.nvim_create_autocmd("FileType", {
      pattern = "trouble",
      callback = function(args)
@@ -172,7 +170,7 @@ vim.schedule(function()
      end,
    })
   
-  -- LAZYGIT (Toggle robuste + Nettoyage terminaux fantômes)
+  -- LAZYGIT (Robust toggle + Ghost terminal cleanup)
   map("n", "<C-g>", function()
     local bufs = vim.api.nvim_list_bufs()
     local found = false
@@ -193,8 +191,8 @@ vim.schedule(function()
     require("lazydocker").open()
   end, { desc = "Docker UI Toggle" })
 
-  -- TRUNK (TUI Diagnostic) — racine détectée dynamiquement
-  -- Ouvre trunk dans le dossier contenant .trunk / trunk.yaml, sinon la racine git.
+  -- TRUNK (TUI Diagnostic) — root detected dynamically
+  -- Opens trunk in the directory containing .trunk / trunk.yaml, otherwise git root.
   local function open_trunk(cmd, title)
     local project = require "configs.project"
     local root = project.trunk_root()
@@ -207,7 +205,7 @@ vim.schedule(function()
       direction = "float",
       close_on_exit = false,
       float_opts = { border = "double", title = " 󰆏 " .. title .. " (y to copy) ", title_pos = "center" },
-      -- Permet de fermer avec 'q' une fois le scan fini
+      -- Allow closing with 'q' once scan finishes
       on_open = function(term)
         vim.api.nvim_buf_set_keymap(term.bufnr, "n", "q", "<cmd>close<CR>", { noremap = true, silent = true })
         vim.api.nvim_buf_set_keymap(term.bufnr, "n", "y", "<cmd>%y+<CR><cmd>lua vim.notify('Copied! 󰆏')<CR>", { noremap = true, silent = true })
@@ -219,7 +217,7 @@ vim.schedule(function()
   map("n", "<C-t>", function()
     local project = require "configs.project"
     local root = project.trunk_root()
-    -- Branche git depuis la racine détectée (pas le cwd de nvim)
+    -- Branch from detected root (not nvim's cwd)
     local branch = vim.fn.system("git -C " .. vim.fn.shellescape(root) .. " rev-parse --abbrev-ref HEAD 2>/dev/null"):gsub("%s+", "")
     local cmd = "trunk fmt && trunk check --show-existing"
     if branch == "main" or branch == "master" then
@@ -236,25 +234,25 @@ vim.schedule(function()
   -- EMERGENCY : Force close current buffer (useful if stuck)
   map("n", "<C-k>", "<cmd>bd!<CR>", { desc = "Force Close Buffer" })
 
-  -- Jumper à la définition VIA LE LSP (remplace la recherche de tags)
-  -- Évite les erreurs "E433: No tags file" / "E426: Tag not found: xxx"
+  -- Jump to definition VIA LSP (replaces tag search)
+  -- Avoids "E433: No tags file" / "E426: Tag not found: xxx" errors
   map("n", "<C-]>", function()
     if #vim.lsp.get_clients({ bufnr = 0 }) > 0 then
       vim.lsp.buf.definition()
     else
       vim.notify(
-        "Aucun serveur LSP attaché. Installe-les via :MasonInstall ou `npm i -g typescript typescript-language-server @tailwindcss/language-server vscode-langservers-extracted @prisma/language-server @angular/language-server` puis relance nvim.",
+        "No LSP server attached. Install via :MasonInstall or `npm i -g typescript typescript-language-server @tailwindcss/language-server vscode-langservers-extracted @prisma/language-server @angular/language-server` then restart nvim.",
         vim.log.levels.WARN
       )
     end
   end, { desc = "Go to definition (LSP)" })
 
-  -- VS Code-like : Ctrl+Clic sur un symbole -> ouvre sa définition/fichier
+  -- VS Code-like: Ctrl+Click on a symbol -> open its definition/file
   map("n", "<C-LeftMouse>", function()
     if #vim.lsp.get_clients({ bufnr = 0 }) > 0 then
       vim.lsp.buf.definition()
     else
-      vim.notify("Pas de serveur LSP attaché sur ce buffer", vim.log.levels.WARN)
+      vim.notify("No LSP server attached to this buffer", vim.log.levels.WARN)
     end
   end, { desc = "Go to definition (Ctrl+Click)" })
   
@@ -267,25 +265,25 @@ vim.schedule(function()
   end, { desc = "Close Buffer" })
 
   -- MENU NVIM
-  map("n", "<leader>m", "<cmd>Nvdash<CR>", { desc = "Afficher le Menu Nvim (Dashboard)" })
+  map("n", "<leader>m", "<cmd>Nvdash<CR>", { desc = "Show Nvim Menu (Dashboard)" })
   pcall(function()
     map("n", "<RightMouse>", function()
       vim.cmd.exec '"normal! \\<RightMouse>"'
       local options = vim.bo.ft == "NvimTree" and "nvimtree" or "default"
       require("menu").open(options, { mouse = true })
-    end, { desc = "Ouvrir le menu contextuel" })
+    end, { desc = "Open context menu" })
   end)
   
-  -- FORMATAGE (Shift + Alt + F)
+  -- FORMATTING (Shift + Alt + F)
   map("n", "<A-S-f>", function() 
     require("conform").format({ lsp_fallback = true }) 
     vim.notify("Formatting complete", vim.log.levels.INFO)
   end, { desc = "Format Code" })
 
-  -- SCRIPTS RUNNER (auto-detecte package.json scripts)
+  -- SCRIPTS RUNNER (auto-detects package.json scripts)
   map("n", "<leader>rr", function()
     require("configs.runner").pick()
-  end, { desc = "Run Script (choisir)" })
+  end, { desc = "Run Script (pick)" })
 
   map("n", "<leader>rt", function()
     require("configs.runner").run_test()

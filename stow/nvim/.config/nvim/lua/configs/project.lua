@@ -1,15 +1,15 @@
--- Détection dynamique de la racine de projet.
--- Embarque 2 stratégies :
---   1. remonte les répertoires parents (find_up)       [rapide]
---   2. cherche vers le bas avec un grep (rg / fd / find) [sous-dossiers / monorepo]
+-- Dynamic project root detection.
+-- Employs 2 strategies:
+--   1. traverses parent directories (find_up)          [fast]
+--   2. searches downward with grep (rg / fd / find)    [subdirectories / monorepo]
 local M = {}
 
 local function hasfile(p) return vim.fn.filereadable(p) == 1 end
 local function hasdir(p) return vim.fn.isdirectory(p) == 1 end
 local function exists(p) return hasfile(p) or hasdir(p) end
 
---- Dossier de départ de la détection : celui du buffer actif (le fichier ouvert)
---- si c'est un vrai fichier, sinon le cwd de nvim.
+--- Starting directory for detection: the active buffer's directory
+--- if it's a real file, otherwise nvim's cwd.
 ---@return string
 function M.start_dir()
   local f = vim.fn.expand("%:p")
@@ -19,10 +19,10 @@ function M.start_dir()
   return vim.fn.getcwd()
 end
 
---- Remonte de `start` jusqu'à trouver un dossier contenant un de `markers`.
+--- Traverses up from `start` until finding a directory containing one of `markers`.
 ---@param start string
 ---@param markers string[]
----@return string? chemin du dossier trouvé, sinon nil
+---@return string? path of the found directory, or nil
 function M.find_up(start, markers)
   local dir = start
   local prev = ""
@@ -38,10 +38,10 @@ function M.find_up(start, markers)
   return nil
 end
 
---- Cherche vers le bas avec rg (fd / find) le dossier contenant le plus proche
---- fichier `pattern`. Retourne le chemin absolu du dossier, sinon nil.
+--- Searches downward with rg (fd / find) for the directory containing the closest
+--- `pattern` file. Returns the absolute path of the directory, or nil.
 ---@param start string
----@param pattern string  motif glob du nom de fichier, ex: "package.json"
+---@param pattern string  glob pattern for filename, e.g. "package.json"
 ---@return string?
 function M.find_down(start, pattern)
   local ignores = " -g '!**/node_modules/**' -g '!**/.git/**' -g '!**/dist/**' -g '!**/build/**' "
@@ -59,7 +59,7 @@ function M.find_down(start, pattern)
       pattern, ignores, vim.fn.shellescape(start)
     )
   else
-    -- fallback : find + grep (lent mais portable)
+    -- fallback: find + grep (slow but portable)
     cmd = string.format(
       "find %s -type f -name '%s' 2>/dev/null | grep -v '/node_modules/' | grep -v '/.git/'",
       vim.fn.shellescape(start), pattern
@@ -87,32 +87,32 @@ function M.find_down(start, pattern)
   return nil
 end
 
---- Racine Node : dossier contenant le `package.json` (ancêtre OU sous-dossier).
+--- Node root: directory containing `package.json` (ancestor OR subdirectory).
 function M.node_root()
   local start = M.start_dir()
-  -- 1) Privilégier le plus proche package.json d'un ancêtre.
+  -- 1) Prefer the closest package.json from an ancestor.
   local up = M.find_up(start, { "package.json" })
   if up then return up end
-  -- 2) Sinon espace de travail npm/yarn (monorepo) d'un ancêtre.
+  -- 2) Otherwise npm/yarn workspace (monorepo) from an ancestor.
   local ws = M.find_up(start, { "pnpm-workspace.yaml", "nx.json", "lerna.json", "yarn.lock" })
   if ws then return ws end
-  -- 3) Aucun en hauteur : chercher vers le bas le package.json le plus proche.
+  -- 3) None above: search downward for the closest package.json.
   local down = M.find_down(start, "package.json")
   if down then return down end
   return start
 end
 
---- Racine Trunk : dossier `.trunk` / `trunk.yaml`, sinon racine git.
+--- Trunk root: `.trunk` / `trunk.yaml` directory, otherwise git root.
 function M.trunk_root()
   local start = M.start_dir()
   local t1 = M.find_up(start, { ".trunk" })
   if t1 then return t1 end
   local t2 = M.find_up(start, { "trunk.yaml", "trunk.fmt.yaml" })
   if t2 then return t2 end
-  -- Sinon : racine du dépôt git (.git le plus haut)
+  -- Otherwise: git repository root (highest .git)
   local gitroot = M.find_up(start, { ".git" })
   if gitroot then return gitroot end
-  -- Dernier recours : racine node (pour que git / trunk s'exécutent au bon endroit)
+  -- Last resort: node root (so git / trunk run in the right place)
   return M.node_root()
 end
 

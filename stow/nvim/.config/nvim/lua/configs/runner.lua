@@ -2,14 +2,14 @@ local M = {}
 
 local project = require "configs.project"
 
---- Racine Node : détectée dynamiquement (ancêtre + recherche rg vers le bas).
+--- Node root: detected dynamically (ancestor + downward rg search).
 function M.find_root()
   return project.node_root()
 end
 
 function M.detect_runner()
   local start = project.start_dir()
-  -- Les lockfiles peuvent se trouver à la racine du monorepo (au-dessus).
+  -- Lockfiles may be at the monorepo root (above).
   local b = project.find_up(start, { "bun.lockb", "bun.lock" })
   if b then return "bun" end
   local p = project.find_up(start, { "pnpm-lock.yaml" })
@@ -72,12 +72,12 @@ end
 function M.pick()
   local scripts = M.get_scripts()
   if not scripts then
-    -- Aucun package.json : on lance le scanner auto des diagnostics (DiagScan)
-    -- au lieu d'un toast sans issue, et on l'indique.
+    -- No package.json: launch the auto diagnostics scanner (DiagScan)
+    -- instead of a dead-end toast, and notify the user.
     local root = M.find_root()
     local ok_diag = pcall(require, "configs.diagnostics")
     vim.notify(
-      "Aucun package.json (racine: " .. root .. "). Lancement du scanner auto des diagnostics…",
+      "No package.json (root: " .. root .. "). Launching auto diagnostics scanner…",
       vim.log.levels.INFO
     )
     if ok_diag then
