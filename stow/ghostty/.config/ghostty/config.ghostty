@@ -1,42 +1,68 @@
-# --- Splits & Tabs ---
+# ==============================================================================
+# GHOSTTY CONFIGURATION
+# Focus: Developer Productivity, Minimalist UX & Clean Architecture
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. WINDOW MANAGEMENT & DECORATIONS
+# ------------------------------------------------------------------------------
+window-decoration = false
+window-padding-x = 5
+window-padding-y = 5
+window-padding-balance = true
+
+# Opacity & Visual Comfort
+background-opacity = 0.95
+background-blur = 50
+
+# Split Divider Styling
+split-divider-color = "#444444"
+
+# ------------------------------------------------------------------------------
+# 2. TYPOGRAPHY & CURSOR
+# ------------------------------------------------------------------------------
+font-family = "JetBrains Mono"
+font-size = 12
+
+cursor-style = block
+cursor-style-blink = true
+mouse-hide-while-typing = true
+
+# ------------------------------------------------------------------------------
+# 3. COLOR SCHEME
+# ------------------------------------------------------------------------------
+# theme = Violet Dark
+theme = Vercel
+
+# ------------------------------------------------------------------------------
+# 4. KEYBINDINGS
+# ------------------------------------------------------------------------------
+
+# --- Splits: Creation & Management ---
 keybind = ctrl+shift+right=new_split:right
 keybind = ctrl+shift+down=new_split:down
 keybind = ctrl+shift+left=new_split:left
 keybind = ctrl+shift+up=new_split:up
-keybind = alt+w=close_surface
-keybind = alt+shift+w=close_tab
 
-# --- Navigation (Alt + Arrows) ---
+# Focus & Focus Zoom (Tmux-like behavior)
+keybind = ctrl+shift+z=toggle_split_zoom
+
+# Navigation across splits (Vim/Tmux direction replacement)
 keybind = alt+left=goto_split:left
 keybind = alt+down=goto_split:down
 keybind = alt+up=goto_split:up
 keybind = alt+right=goto_split:right
 
-# --- Mode Zoom (Style Tmux) ---
-# Press once to maximize, press again to restore
-keybind = ctrl+shift+z=toggle_split_zoom
+# Closing Surface/Tabs
+keybind = alt+w=close_surface
+keybind = alt+shift+w=close_tab
 
-# --- Font Zoom (Font size) ---
+# --- UI Toggles & Zoom ---
 keybind = ctrl+0=reset_font_size
 keybind = ctrl+shift+a=toggle_tab_overview
+keybind = ctrl+shift+d=toggle_window_decorations
 
-# --- UI & Appearance ---
-# theme = Material Design Colors
-theme = Violet Dark
-
-window-decoration = false
-background-opacity = 0.97
-background-blur-radius = 20
-font-family = "JetBrains Mono"
-font-size = 12
-cursor-style = block
-cursor-style-blink = true
-# gtk-tabs-location = top
-
-split-divider-color = #444444
-
-# --- Remove Scrollbar & Optimize Space ---
-window-padding-x = 5
-window-padding-y = 5
-window-padding-balance = true
-mouse-hide-while-typing = true
+# >>> herdr-radar font block
+font-codepoint-map = U+E1A0-U+E1B7=Herdr Agent Icons Max
+font-codepoint-map = U+E1C0-U+E1C5=Herdr Agent Icons Max
+# <<< herdr-radar font block

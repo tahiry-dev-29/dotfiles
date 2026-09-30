@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
-# gwt — Git Worktree helper. Dispatches to git-worktree-auto.sh.
-# Supports: new, rm, pr, cleanup, list
-set -uo pipefail
-SCRIPT="$HOME/dotfiles/scripts/git-worktree-auto.sh"
-[[ -x "$SCRIPT" ]] || { echo "git-worktree-auto.sh not found" >&2; exit 1; }
-exec bash "$SCRIPT" "$@"
+# gwt — Git Worktree helper & Manager TUI
+# If no arguments provided: launches interactive Worktree Manager TUI.
+# Otherwise: dispatches to git-worktree-auto.sh.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GWT_TUI="$SCRIPT_DIR/git-tools/bin/gwt"
+AUTO_SCRIPT="$SCRIPT_DIR/git-worktree-auto.sh"
+
+if [[ $# -eq 0 ]]; then
+  exec bash "$GWT_TUI"
+else
+  [[ -f "$AUTO_SCRIPT" ]] || { echo "git-worktree-auto.sh not found" >&2; exit 1; }
+  exec bash "$AUTO_SCRIPT" "$@"
+fi

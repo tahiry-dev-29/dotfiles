@@ -23,7 +23,14 @@ alias glog="git log --oneline --graph --decorate --color"
 alias gloga="git log --oneline --graph --decorate --all --color"
 alias glogp='git log --pretty=format:"%C(yellow)%h%Creset %C(blue)%an%Creset %C(green)%ar%Creset %s"'
 
-alias gb='git branch'
+# Smart Branch Manager: no args launches TUI, otherwise standard git branch
+gb() {
+  if [[ $# -eq 0 ]]; then
+    bash "$HOME/dotfiles/scripts/gb"
+  else
+    git branch "$@"
+  fi
+}
 alias gba='git branch -a'
 alias gbd='git branch -d'
 alias gbD='git branch -D'
@@ -56,7 +63,14 @@ alias grss1='git reset --soft HEAD~1' # undo last commit (keep changes)
 alias gtag='git tag'
 alias gtagp='git push origin --tags'
 
-alias gwt='git worktree'
+# Smart Worktree Manager: no args launches TUI, otherwise dispatches to gwt CLI
+gwt() {
+  if [[ $# -eq 0 ]]; then
+    bash "$HOME/dotfiles/scripts/gwt"
+  else
+    bash "$HOME/dotfiles/scripts/gwt" "$@"
+  fi
+}
 alias gwta='git worktree add'
 alias gwtb='git worktree add -b'
 alias gwtl='git worktree list'

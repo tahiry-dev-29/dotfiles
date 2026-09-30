@@ -11,16 +11,18 @@ alias ngc="bunx nx g @nx/angular:component"
 alias ngs-all="bunx nx run-many --target=serve --all --parallel"
 alias ngg="bunx nx g"
 
+alias br='bun run'
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 6. NX MONOREPO 🐬
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Run
-alias nxsa='br start:all'
-alias nxpgl='br prisma:generate:local'
-alias nxpmd='br prisma:migrate:deploy'
-alias nxpstu='br prisma:studio'
-alias nxba='br build:all'
+alias nxsa='bun run start:all'
+alias nxpgl='bun run prisma:generate:local'
+alias nxpmd='bun run prisma:migrate:deploy'
+alias nxpstu='bun run prisma:studio'
+alias nxba='bun run build:all'
 
 # Generators
 alias nxgc='bunx nx g @nx/angular:component'

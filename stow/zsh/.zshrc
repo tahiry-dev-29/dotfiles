@@ -115,3 +115,6 @@ setopt SHARE_HISTORY
 # Binary installed to ~/.local/bin/herdr via https://herdr.dev/install.sh
 # ~/.local/bin is already in PATH above.
 # HERDR_ENV=1 is injected by Herdr itself on managed panes — do NOT export here.
+
+# mimocode
+export PATH=/home/tahiry/.mimocode/bin:$PATH

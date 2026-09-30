@@ -12,7 +12,7 @@ auto_switch = false
 delivery = "herdr"
 
 [ui]
-show_agent_labels_on_pane_borders = true
+show_agent_labels_on_pane_borders = false
 
 agent_panel_sort = "spaces"
 status_indicators = "symbols"
@@ -29,9 +29,9 @@ description = "command palette"
 
 [[keys.command]]
 key = "prefix+shift+b"
-type = "popup"
-command = "herdr plugin action invoke herdr-sidebar.open-sidebar"
-description = "toggle sidebar"
+type = "shell"
+command = "sh $HOME/.config/herdr/bin/open-terminal-browser.sh"
+description = "terminal browser (new tab)"
 
 [[keys.command]]
 key = "prefix+shift+m"
@@ -45,3 +45,5 @@ type = "plugin_action"
 command = "gwt-worktree.manager"
 description = "gwt: manage worktrees (fzf)"
 
+[experimental]
+kitty_graphics = true

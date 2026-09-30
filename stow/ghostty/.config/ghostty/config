@@ -34,3 +34,11 @@ keybind = ctrl+shift+l=goto_split:right
 keybind = ctrl+shift+p=unbind
 keybind = ctrl+shift+t=new_tab
 keybind = ctrl+shift+n=next_tab
+
+# Herdr Sidebar provider icons (first: overlaps the Radar range below, first match wins)
+font-codepoint-map = U+E1A0-U+E1A9=Herdr Sidebar Logos
+
+# >>> herdr-radar font block
+font-codepoint-map = U+E1A0-U+E1B7=Herdr Agent Icons Max
+font-codepoint-map = U+E1C0-U+E1C5=Herdr Agent Icons Max
+# <<< herdr-radar font block

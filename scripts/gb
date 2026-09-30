@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# gb — Git Branch Manager. Dispatches to git-tools/bin/gb or git branch if arguments provided.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GB_TUI="$SCRIPT_DIR/git-tools/bin/gb"
+
+if [[ $# -eq 0 ]]; then
+  exec bash "$GB_TUI"
+else
+  exec git branch "$@"
+fi

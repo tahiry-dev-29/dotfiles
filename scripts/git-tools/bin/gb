@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# gb — Git Branch Manager TUI
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+# Load modules
+source "$LIB_DIR/core.sh"
+source "$LIB_DIR/executor.sh"
+source "$LIB_DIR/config.sh"
+source "$LIB_DIR/repo.sh"
+source "$LIB_DIR/branch_service.sh"
+source "$LIB_DIR/worktree_service.sh"
+source "$LIB_DIR/commit_service.sh"
+source "$LIB_DIR/tag_service.sh"
+source "$LIB_DIR/remote_service.sh"
+source "$LIB_DIR/github_service.sh"
+source "$LIB_DIR/pr_service.sh"
+source "$LIB_DIR/issue_service.sh"
+source "$LIB_DIR/ui_fzf.sh"
+source "$LIB_DIR/tui_branch_details.sh"
+source "$LIB_DIR/tui_branch_flows.sh"
+source "$LIB_DIR/tui_branch.sh"
+
+main() {
+  local repo_root
+  if ! repo_root="$(require_git_repo "$PWD")"; then
+    exit 1
+  fi
+  run_gb_tui "$repo_root"
+}
+
+main "$@"
