@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# gwt-env — Copy .env* files across git worktrees (fzf picker).
+exec bash "$HOME/dotfiles/scripts/git-worktree-auto.sh" env "$@"

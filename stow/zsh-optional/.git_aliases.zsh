@@ -70,6 +70,13 @@ alias gwt-rm='bash ~/dotfiles/scripts/git-worktree-auto.sh remove'
 alias gwt-pr='bash ~/dotfiles/scripts/git-worktree-auto.sh pr-flow'
 alias gwt-clean='bash ~/dotfiles/scripts/git-worktree-auto.sh cleanup'
 
+# .env sync across worktrees (fzf picker, same UX as `brs`)
+alias gwt-env='bash ~/dotfiles/scripts/git-worktree-auto.sh env'
+alias gwt-env-up='bash ~/dotfiles/scripts/git-worktree-auto.sh env to'        # main → worktree(s)
+alias gwt-env-down='bash ~/dotfiles/scripts/git-worktree-auto.sh env from'    # worktree → $PWD
+alias gwt-env-sync='bash ~/dotfiles/scripts/git-worktree-auto.sh env sync'    # worktree → worktree
+alias gwt-env-list='bash ~/dotfiles/scripts/git-worktree-auto.sh env list'    # inspect only
+
 # Find who wrote what
 gwho() { git log --follow -p -- $1; }
 galias() { git config --get-regexp alias; }

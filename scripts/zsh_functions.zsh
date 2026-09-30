@@ -211,9 +211,11 @@ function clip-watch() {
 count-code() {
   local ext=${1:-ts}
   local limit=${2:-200}
+  local show_warnings=${3:-}
   local ignore="node_modules|dist|prisma|.prisma|.next|.angular|.nx|.git|.dart_tool|build|seeds|out|.firebase|coverage|.cache"
   local total=0
   local flagged=0
+  local displayed=0
   echo "╔══════════════════════════════════════════"
   echo "║  🔍 Audit .$ext  │  Limit: $limit lines"
   echo "╚══════════════════════════════════════════"
@@ -223,12 +225,18 @@ count-code() {
     if [ "$loc" -gt "$limit" ]; then
       flagged=$((flagged + 1))
       echo -e "  \033[1;31m🚨 ($loc)\033[0m  $file"
-    else
+      displayed=$((displayed + 1))
+    elif [ -z "$show_warnings" ]; then
       echo -e "  \033[0;32m✓  ($loc)\033[0m  $file"
+      displayed=$((displayed + 1))
     fi
   done < <(fd --extension "$ext" --exclude "{$ignore}" .)
   echo "──────────────────────────────────────────"
-  echo "  📊 Total: $total files │ 🚨 To refactor: $flagged"
+  if [ -n "$show_warnings" ]; then
+    echo "  📊 Displayed: $displayed files │ 🚨 Flagged: $flagged"
+  else
+    echo "  📊 Total: $total files │ 🚨 To refactor: $flagged"
+  fi
 }
 
 _extract_log() {
@@ -387,6 +395,471 @@ wt-new() {
   echo "🚀 Worktree ready! cd into it with:"
   echo "   cd $wt_path"
   echo ""
+}
+
+# ==============================================================================
+# 🔐 WT-ENV — Copy .env files between the main checkout and worktrees
+# ==============================================================================
+# Thin, friendly wrapper over `git-worktree-auto.sh env` (alias: gwt-env).
+# The worktree roots are auto-detected from the .git config:
+#   • in a linked worktree → copies main → this worktree
+#   • in the main checkout → opens fzf to pick the target worktree(s)
+# The heavy lifting (fzf picker, edit-distance typo hints, copy core) lives in
+# the script so the bash/zsh entrypoints stay in sync.
+#
+# Usage:
+#   wt-env                 auto-detect the direction
+#   wt-env up [target...]  main → worktree(s)      (fzf if no target)
+#   wt-env down [src...]   worktree → current root  (fzf if no src)
+#   wt-env sync <src> <dst>  worktree → worktree
+#   wt-env list            inspect worktrees and their .env* count
+#
+# Any other flag is forwarded as-is (-i, -s, -f, -n, --deep, -y, --help).
+wt-env() {
+  emulate -L zsh
+  local script="$HOME/dotfiles/scripts/git-worktree-auto.sh"
+
+  if [[ ! -f "$script" ]]; then
+    echo "❌ $script not found"
+    return 1
+  fi
+
+  if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
+    echo "❌ Not inside a git repository — cd to a project first."
+    return 1
+  fi
+
+  # Bare call: let the script infer the direction from the current worktree.
+  if [[ $# -eq 0 ]]; then
+    bash "$script" env
+    return $?
+  fi
+
+  # Help / no-arg-safe: delegate so there is a single source of truth.
+  case "$1" in
+    -h|--help|help) bash "$script" env --help; return $? ;;
+  esac
+
+  case "$1" in
+    up)    shift; bash "$script" env to   "$@" ;;
+    down)  shift; bash "$script" env from "$@" ;;
+    sync)  shift; bash "$script" env sync "$@" ;;
+    list)  shift; bash "$script" env list "$@" ;;
+    *)         bash "$script" env "$@" ;;
+  esac
+}
+
+# ==============================================================================
+# ⚡ ALIASRUN — Search, pick and run your zsh aliases with fzf
+# ==============================================================================
+# You have hundreds of aliases and forget half of them. This picks one (or
+# several) with fzf and runs it, instead of trying to remember the name.
+#
+# Usage:
+#   aliasrun                 open the fzf picker over every alias
+#   aliasrun <name>          run that alias directly (no picker) — fast path
+#   aliasrun -g <group>      restrict to a group (git, docker, bun, …)
+#   aliasrun -l              list all aliases grouped, no picker
+#   aliasrun -c              copy the selected alias definition
+#   aliasrun -h              this help
+#
+# In the picker: TAB = multi-select · ENTER = run · ESC = cancel
+#
+# Notes:
+#   • Source of truth is `alias` in the CURRENT shell, so optional modules
+#     (~/.git_aliases.zsh …) and ~/.zsh_local are included automatically.
+#   • Nothing runs at shell startup; this only costs time when you call it.
+# ---------------------------------------------------------------------------
+
+# Group an alias by its name so results stay scannable.
+_aliasrun_group() {
+  case "$1" in
+    _*)                        echo "internal" ;;
+    gwt*|gs*|ga*|gc*|gp*|gl*|gf*|gb*|gr*|g[a-z]) echo "git" ;;
+    ng[a-z]*|nx[a-z]*)         echo "angular/nx" ;;
+    ns[a-z]*|pgen*|pmig*|pstu*|pdb*) echo "nestjs/prisma" ;;
+    fl[a-z]*)                  echo "flutter" ;;
+    d[a-z]*)                   echo "docker" ;;
+    pnpm*|pn*|npx*)            echo "pnpm" ;;
+    br*|bun*|nxp*)             echo "bun" ;;
+    gpt*|claude*|sk*|ai*)       echo "ai" ;;
+    ll|la|l|ls*|cat*|cdi|v|nv*) echo "files" ;;
+    kill*|port*)               echo "system" ;;
+    *)                         echo "other" ;;
+  esac
+}
+
+# Emit "name<TAB>command<TAB>group" for every alias in the current shell.
+#
+# Parsing notes:
+#   • iterate over ${(@k)aliases} instead of parsing `alias` output: a value can
+#     contain newlines/tabs/quotes (path='echo $PATH | tr ":" "\n" | nl'),
+#     and reading name+value per key keeps each entry on a single row;
+#   • the value is read raw from $aliases, so the outer quotes that `alias`
+#     prints are already gone — inner ones are preserved;
+#   • a trailing space is meaningful (s='sudo ' → "sudo ").
+_aliasrun_collect() {
+  local filter_group="$1"
+  local name cmd group
+  local -a rows=()
+  # Iterate over alias NAMES (one per line, never split by the value) and read
+  # each value from $aliases — immune to values containing newlines, tabs or
+  # quotes (path='echo $PATH | tr ":" "\n" | nl' stays a single row).
+  for name in "${(@k)aliases}"; do
+    cmd="${aliases[$name]}"
+    [[ -z "$name" ]] && continue
+    [[ "$name" == _* ]] && continue        # internal helpers
+    (( ${#cmd} > 200 )) && continue        # skip huge definitions
+    group=$(_aliasrun_group "$name")
+    [[ -n "$filter_group" && "$group" != "$filter_group" ]] && continue
+    # Keep the row on one physical line: replace real control characters.
+    cmd="${cmd//$'\n'/\\n}"
+    cmd="${cmd//$'\t'/ }"
+    # Row layout is name ⇥ command ⇥ group (group last so a plain sort keys on
+    # it). Build it as group ⇥ name ⇥ command so the (o) sort groups properly,
+    # then re-order to the canonical layout on output.
+    rows+=("${group}"$'\t'"${name}"$'\t'"${cmd}")
+  done
+  # SORT the rows. ${(@k)aliases} is a hash table → the raw order is random, so
+  # pressing ENTER straight away would run an arbitrary alias. Sort by group
+  # then name, in zsh (piping through `sort` would split a value containing a
+  # literal "\n", e.g. path='… tr ":" "\n" …').
+  # Note the "${sorted[@]}" (quoted): an unquoted expansion would re-split values
+  # that contain spaces or glob characters.
+  local -a sorted=("${(@)rows}")
+  sorted=(${(o)sorted})
+  local r rest sname scmd sgroup
+  for r in "${sorted[@]}"; do
+    # sorted rows are "group ⇥ name ⇥ command" → emit "name ⇥ command ⇥ group"
+    sgroup="${r%%$'\t'*}"           # group is the first field
+    rest="${r#*$'\t'}"              # drop it
+    sname="${rest%%$'\t'*}"         # name
+    scmd="${rest#*$'\t'}"           # command
+    print -r -- "${sname}"$'\t'"${scmd}"$'\t'"${sgroup}"
+  done
+}
+
+# Copy to the clipboard, detecting the backend like _clipboard_paste does.
+_aliasrun_copy() {
+  local text="$1"
+  if command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$text" | wl-copy && return 0
+  elif command -v xclip >/dev/null 2>&1; then
+    printf '%s' "$text" | xclip -selection clipboard && return 0
+  elif command -v xsel >/dev/null 2>&1; then
+    printf '%s' "$text" | xsel -b && return 0
+  elif command -v pbcopy >/dev/null 2>&1; then
+    printf '%s' "$text" | pbcopy && return 0
+  fi
+  return 1
+}
+
+# Number of non-empty rows in a TSV blob (wc -l on "$(...)" data is fragile:
+# command substitution eats the trailing newline and can report one too many).
+_aliasrun_count() {
+  local line n=0
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && n=$((n + 1))
+  done <<< "$1"
+  print -r -- "$n"
+}
+
+# Resolve a single alias name to its command. Prints nothing when unknown.
+_aliasrun_lookup() {
+  local want="$1" name cmd g
+  while IFS=$'\t' read -r name cmd g; do
+    if [[ "$name" == "$want" ]]; then
+      print -r -- "$cmd"
+      return 0
+    fi
+  done < <(_aliasrun_collect "")
+  return 1
+}
+
+# List every alias grouped, without any picker.
+_aliasrun_list() {
+  local group="$1" data name cmd g cur="" total
+  data=$(_aliasrun_collect "$group")
+  [[ -z "$data" ]] && { echo "❌ No alias found."; return 1; }
+  total=$(_aliasrun_count "$data")
+  echo ""
+  echo "  ⚡ $total alias(es)${group:+ in group '$group'}"
+  echo "  ══════════════════════════════════════════════════════════════"
+  # Sort in zsh: piping through `sort` splits a literal "\n" inside a value into
+  # a real line break (path='… tr ":" "\n" …' was cut in two).
+  local -a sorted=()
+  local r key g2 name2
+  for r in ${(f)data}; do
+    [[ -z "$r" ]] && continue
+    # key = group <TAB> name, so a plain (o) sort groups then orders by name
+    g2="${r##*$'\t'}"          # group is the last field
+    name2="${r%%$'\t'*}"       # name is the first field
+    sorted+=("${g2}"$'\t'"${name2}")
+  done
+  sorted=(${(o)sorted})
+  for r in $sorted; do
+    [[ -z "$r" ]] && continue
+    g2="${r%%$'\t'*}"
+    name2="${r#*$'\t'}"
+    cmd="${aliases[$name2]}"
+    if [[ "$g2" != "$cur" ]]; then
+      cur="$g2"
+      printf '\n  %s\n' "${(U)cur}"
+    fi
+    printf '    %-14s %s\n' "$name2" "$cmd"
+  done
+  echo ""
+  return 0
+}
+
+# No-fzf fallback: numbered list, accepts "2", "1 3 5" and "1-4".
+# The chosen alias NAMES go to stdout (one per line); the list and the prompt
+# go to stderr so the caller can capture stdout cleanly.
+_aliasrun_fallback() {
+  local data="$1"
+  local -a names=() cmds=()
+  local name cmd g i answer tok a b k
+  while IFS=$'\t' read -r name cmd g; do
+    [[ -n "$name" ]] || continue
+    names+=("$name"); cmds+=("$cmd")
+  done <<< "$data"
+
+  {
+    print ""
+    print "  ⚠️  fzf not found — numbered selection"
+    for ((i = 1; i <= ${#names[@]}; i++)); do
+      printf '  %3d) %-14s %s\n' "$i" "${names[i]}" "${cmds[i]}"
+    done
+    # NOTE: no `read -p` — it needs a coprocess and fails with "no coprocess"
+    # when stdin is not a terminal (piped input, scripts, CI).
+    print -n "  number(s) or ranges [1-3 5], 0 = cancel: "
+  } >&2
+  read -r answer
+  if [[ -z "$answer" || "$answer" == 0 ]]; then
+    return 1
+  fi
+
+  local -a chosen=()
+  for tok in ${=answer}; do
+    if [[ "$tok" == *-* ]]; then
+      a="${tok%-*}"; b="${tok#*-}"
+      if [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]]; then
+        (( b > ${#names[@]} )) && b=${#names[@]}
+        for ((k = a; k <= b; k++)); do
+          (( k >= 1 )) && chosen+=("${names[k]}")
+        done
+      else
+        echo "  ⚠️  bad range: $tok"
+      fi
+    elif [[ "$tok" =~ ^[0-9]+$ ]]; then
+      if (( tok >= 1 && tok <= ${#names[@]} )); then
+        chosen+=("${names[tok]}")
+      else
+        echo "  ⚠️  out of range: $tok"
+      fi
+    else
+      echo "  ⚠️  not a number: $tok"
+    fi
+  done
+  (( ${#chosen[@]} )) || return 1
+  printf '%s\n' "${chosen[@]}"
+  return 0
+}
+
+aliasrun_help() {
+  cat <<'EOF'
+  ⚡ aliasrun — find and run any of your zsh aliases with fzf
+
+  Usage:
+    aliasrun                 picker over every alias
+    aliasrun <name>          run that alias directly (no picker)
+    aliasrun -g <group>      restrict to a group
+    aliasrun -l              list all aliases grouped (no picker)
+    aliasrun -c              copy the selected alias definition
+
+  Picker keys:
+    TAB    multi-select      ENTER  run the selection      ESC  cancel
+
+  Groups: git · angular/nx · nestjs/prisma · flutter · docker · pnpm ·
+          bun · ai · files · system · other
+EOF
+}
+
+aliasrun() {
+  emulate -L zsh
+  setopt local_options no_unset
+
+  local group="" list_mode="false" copy_mode="false" direct=""
+  local -a extra=()
+
+  # ---- flags ----
+  # Everything after the alias NAME is forwarded to the alias itself, so
+  # `aliasrun gcm "my message"` runs `gcm "my message"`.
+  while (( $# > 0 )); do
+    case "$1" in
+      -g|--group) group="${2:-}"; shift 2 ;;
+      -l|--list)  list_mode="true"; shift ;;
+      -c|--copy)  copy_mode="true"; shift ;;
+      -h|--help)  aliasrun_help; return 0 ;;
+      -*)         echo "❌ Unknown option: $1"; echo ""; aliasrun_help; return 1 ;;
+      *)
+        if [[ -z "$direct" ]]; then
+          direct="$1"
+        else
+          extra+=("$1")
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  # ---- list mode ----
+  [[ "$list_mode" == "true" ]] && { _aliasrun_list "$group"; return $?; }
+
+  # ---- fast path: run a known alias directly ----
+  if [[ -n "$direct" ]]; then
+    local cmd
+    if ! cmd=$(_aliasrun_lookup "$direct"); then
+      echo "❌ Unknown alias: '$direct'"
+      echo "💡 'aliasrun -l' lists them all · 'aliasrun' opens the fzf picker."
+      return 1
+    fi
+    if [[ "$copy_mode" == "true" ]]; then
+      local text="$direct='$cmd'"
+      if _aliasrun_copy "$text"; then echo "📋 Copied: $text"
+      else echo "📋 $text"; echo "⚠️  No clipboard tool (wl-copy/xclip/xsel/pbcopy)."; fi
+      return 0
+    fi
+    echo "⚡ $direct → $cmd${extra:+ $*}"
+    if (( ${#extra[@]} > 0 )); then
+      eval "$cmd ${(q)extra}"
+    else
+      eval "$cmd"
+    fi
+    return $?
+  fi
+
+  # ---- collect ----
+  local data total
+  data=$(_aliasrun_collect "$group")
+  if [[ -z "$data" ]]; then
+    echo "❌ No alias found${group:+ in group '$group'}."
+    return 1
+  fi
+  total=$(_aliasrun_count "$data")
+
+  # ---- pick: fzf, or numbered fallback when fzf is missing ----
+  local -a selected=()
+  if command -v fzf >/dev/null 2>&1; then
+    local out row
+    # Feed rows to fzf WITHOUT `print -l`: it interprets escape sequences and
+    # would turn the literal "\n" of path='… tr ":" "\n" …' into a real newline,
+    # splitting that alias across two rows. printf '%s\n' is literal-safe.
+    #
+    # --with-nth reorders the DISPLAY only, so {1} still refers to the name.
+    # `change+clear` makes TAB toggle a selection even when nothing has been
+    # typed yet, and `start:select-all` is deliberately NOT used (it would
+    # preselect every row).
+    if ! out=$(printf '%s\n' "$data" | fzf \
+          --multi --reverse --height=60% --border \
+          --delimiter=$'\t' --with-nth=1,3,2 --tiebreak=index \
+          --prompt='⚡ alias > ' \
+          --header="TAB = multi-select │ ENTER = run │ ESC = cancel  (${total} aliases)" \
+          --preview='printf "  \033[1m%s\033[0m\n\n  %s\n\n  group: %s\n" {1} {2} {3}' \
+          --preview-window='down:5:wrap'); then
+      echo "  ✋ cancelled."
+      return 0
+    fi
+    # fzf exits 0 with an EMPTY output when ENTER is pressed with no query and
+    # no current line (fzf < 0.50 has no --highlight-line): treat it as a
+    # cancel instead of falling through and doing nothing visible.
+    if [[ -z "$out" ]]; then
+      echo "  ✋ nothing selected (type to search, then ENTER)."
+      return 0
+    fi
+    # Only the NAME (field 1) is needed, so read it literally.
+    while IFS= read -r row; do
+      [[ -n "$row" ]] && selected+=("${row%%$'\t'*}")
+    done <<< "$out"
+  else
+    local picked n
+    if ! picked=$(_aliasrun_fallback "$data"); then
+      echo "  ✋ nothing selected."
+      return 0
+    fi
+    for n in ${(f)picked}; do
+      [[ -n "$n" ]] && selected+=("$n")
+    done
+  fi
+
+  (( ${#selected[@]} )) || { echo "  ✋ nothing selected."; return 0; }
+
+  # ---- resolve the selection to commands ----
+  local -a cmds=() labels=()
+  local name cmd
+  for name in "${selected[@]}"; do
+    if cmd=$(_aliasrun_lookup "$name"); then
+      cmds+=("$cmd"); labels+=("$name")
+    else
+      echo "⚠️  '$name' is not an alias anymore — skipped."
+    fi
+  done
+  (( ${#cmds[@]} )) || { echo "❌ Nothing to run."; return 1; }
+
+  # ---- copy mode ----
+  if [[ "$copy_mode" == "true" ]]; then
+    local i text
+    for ((i = 1; i <= ${#labels[@]}; i++)); do
+      text="${labels[i]}='${cmds[i]}'"
+      if _aliasrun_copy "$text"; then echo "📋 Copied: $text"
+      else echo "📋 $text"; fi
+    done
+    return 0
+  fi
+
+  # ---- confirm when several aliases will run ----
+  if (( ${#cmds[@]} > 1 )); then
+    echo ""
+    echo "  ⚡ Running ${#cmds[@]} aliases in order:"
+    local i=1
+    for name in "${labels[@]}"; do
+      printf '     %d. %-14s %s\n' "$i" "$name" "${cmds[i]}"
+      i=$((i + 1))
+    done
+    local reply
+    # See the note in _aliasrun_fallback: `read -p` needs a coprocess and
+    # errors out when stdin is piped instead of a terminal.
+    print -n "  Proceed? [y/N] "
+    read -r reply
+    if [[ "$reply" != [yY]* ]]; then
+      echo "  ✋ aborted."
+      return 0
+    fi
+  fi
+
+  # ---- run sequentially, with a final report ----
+  local idx failed=0
+  for ((idx = 1; idx <= ${#cmds[@]}; idx++)); do
+    echo ""
+    if (( ${#cmds[@]} > 1 )); then
+      echo "═══════ [$idx/${#cmds[@]}] ⚡ ${labels[idx]} ═══════"
+    else
+      echo "⚡ ${labels[idx]}"
+    fi
+    eval "${cmds[idx]}"
+    if (( $? != 0 )); then
+      failed=$((failed + 1))
+      echo "❌ Failed: ${labels[idx]}"
+    fi
+  done
+
+  echo ""
+  if (( failed > 0 )); then
+    echo "📋 Done: $(( ${#cmds[@]} - failed ))/${#cmds[@]} succeeded, ❌ $failed failed"
+    return 1
+  fi
+  echo "✅ Done: ${#cmds[@]}/${#cmds[@]} succeeded"
+  return 0
 }
 
 # ==============================================================================

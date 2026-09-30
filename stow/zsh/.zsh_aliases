@@ -303,6 +303,11 @@ alias ping='ping -c 5'
 # Find quickly
 alias rgs='rg --type ts'             # ripgrep on TS files
 
+# ⚡ Browse & run any alias with fzf
+#    (logic lives in aliasrun → ~/dotfiles/scripts/zsh_functions.zsh)
+alias ar='aliasrun'                  # fzf picker over every alias
+alias arl='aliasrun -l'              # list aliases grouped, no picker
+
 # GNOME Backup
 # GNOME Backup (Linux + GNOME only — skipped silently on macOS/WSL)
 gnome-backup() {
@@ -343,19 +348,6 @@ dotenv-show() { echo "📄 Showing env variables from ${1:-.env}:"; cat ${1:-.en
 
 # Reload config without losing session
 alias reload-safe='exec zsh'
-
-
-# ==============================================================================
-# 🧩 OPTIONAL MODULES (Sourced if enabled during installation)
-# ==============================================================================
-# 📦 JS/TS RUNNER — @antfu/ni (bun-first) 🚀
-# ==============================================================================
-# Auto-detects the package manager via lockfile
-# (bun.lock → bun, pnpm-lock.yaml → pnpm, yarn.lock → yarn, otherwise npm)
-# `nr` without args = interactive picker for package.json scripts
-# (terminal equivalent of <leader>rr in nvim). Add '?' = dry-run.
-
-alias br='nr'                 # interactive script picker
 
 # ==============================================================================
 # 🧩 OPTIONAL MODULES (Sourced if enabled during installation)
