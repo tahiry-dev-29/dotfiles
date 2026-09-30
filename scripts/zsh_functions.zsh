@@ -756,14 +756,12 @@ aliasrun() {
     # would turn the literal "\n" of path='… tr ":" "\n" …' into a real newline,
     # splitting that alias across two rows. printf '%s\n' is literal-safe.
     # `--with-nth` reorders the DISPLAY only, so {1} still refers to the name.
-    # `--bind 'start:down'` is REQUIRED with fzf < 0.50: without it no row is
-    # the "current" one, so pressing ENTER straight away (no query typed) exits
-    # with an empty result and nothing happens. This makes the first row the
-    # current one, so ENTER alone runs it.
+    # NOTE: no `start:down` bind — fzf already makes the first row the current
+    # one, so ENTER with an empty query runs it (verified with tmux). Adding
+    # start:down would move the cursor OFF the first row.
     if ! out=$(printf '%s\n' "$data" | fzf \
           --multi --reverse --height=60% --border \
           --delimiter=$'\t' --with-nth=1,3,2 --tiebreak=index \
-          --bind 'start:down' \
           --prompt='⚡ alias > ' \
           --header="TAB = multi-select │ ENTER = run │ ESC = cancel  (${total} aliases)" \
           --preview='printf "  \033[1m%s\033[0m\n\n  %s\n\n  group: %s\n" {1} {2} {3}' \
