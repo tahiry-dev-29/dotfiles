@@ -18,6 +18,7 @@ ui_select() {
   local delimiter="${5:-$'\t'}"
   local with_nth="${6:-}"
   local multi="${7:-false}"
+  local preview_window="${8:-right:50%:wrap}"
 
   local -a fzf_opts=(
     --ansi
@@ -31,7 +32,7 @@ ui_select() {
 
   [[ -n "$with_nth" ]] && fzf_opts+=(--with-nth="$with_nth")
   [[ "$multi" == "true" ]] && fzf_opts+=(--multi)
-  [[ -n "$preview_cmd" ]] && fzf_opts+=(--preview="$preview_cmd" --preview-window="right:50%:wrap")
+  [[ -n "$preview_cmd" ]] && fzf_opts+=(--preview="$preview_cmd" --preview-window="$preview_window")
 
   local result
   result="$(fzf "${fzf_opts[@]}")" || return 1
@@ -62,7 +63,7 @@ ui_help_modal() {
     printf '%s║               GWT — Git Worktree Manager Shortcuts               ║%s\n' "$C_BOLD" "$C_RESET"
     printf '%s╠══════════════════════════════════════════════════════════════════╣%s\n' "$C_BLUE" "$C_RESET"
     printf '║  %sEnter%s   Open selected worktree in shell                            ║\n' "$C_CYAN" "$C_RESET"
-    printf '║  %sn%s       Create new branch worktree                                 ║\n' "$C_CYAN" "$C_RESET"
+    printf '║  %sn%s       Create new branch worktree (+ auto bootstrap)              ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %sp%s       Create worktree from GitHub Pull Request                   ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %si%s       Create branch & worktree from GitHub Issue                 ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %sc%s       Create worktree from Commit (branch or detached)           ║\n' "$C_CYAN" "$C_RESET"
@@ -82,7 +83,7 @@ ui_help_modal() {
     printf '║  %sw%s       Create new worktree for selected branch                    ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %sd%s       Safe delete branch (-d if merged, confirms -D if unmerged) ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %sp%s       Pull Request flow (inspect/open web/create)                ║\n' "$C_CYAN" "$C_RESET"
-    printf '║  %sf%s       Change filter (ALL, MERGED, NOT MERGED, WITH CHANGES, ...)║\n' "$C_CYAN" "$C_RESET"
+    printf '║  %sf%s       Cycle filter (ALL, MERGED, NOT MERGED, WITH CHANGES, ...)  ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %sm%s       Toggle multi-select mode (bulk branch deletion)            ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %sR%s       Refresh branch list                                        ║\n' "$C_CYAN" "$C_RESET"
     printf '║  %s/%s       Fuzzy search branches                                      ║\n' "$C_CYAN" "$C_RESET"

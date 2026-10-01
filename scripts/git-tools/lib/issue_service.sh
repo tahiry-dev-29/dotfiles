@@ -47,6 +47,7 @@ issue_create_worktree() {
 
   if worktree_create_branch "$root" "$dest_path" "$branch" "true" "$base_branch"; then
     log_ok "Worktree created at $dest_path for Issue #$issue_num"
+    printf '%s\n' "$dest_path"
     return 0
   else
     log_err "Failed to create worktree for Issue #$issue_num."

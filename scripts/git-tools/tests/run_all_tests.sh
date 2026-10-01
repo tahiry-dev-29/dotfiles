@@ -11,6 +11,8 @@ SUITES=(
   "test_remote.sh"
   "test_safety.sh"
   "test_github.sh"
+  "test_bootstrap.sh"
+  "test_layout.sh"
 )
 
 TOTAL_SUITES=${#SUITES[@]}

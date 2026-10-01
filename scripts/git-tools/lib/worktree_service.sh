@@ -47,9 +47,7 @@ _emit_worktree_record() {
   local is_main=0 dirty_str="clean" mod_count=0 untracked_count=0
   local ahead_behind="-" upstream="-"
 
-  if [[ -d "$path/.git" ]]; then
-    is_main=1
-  fi
+  [[ -d "$path/.git" ]] && is_main=1
 
   if [[ -d "$path" ]]; then
     mod_count="$(git -C "$path" status --porcelain 2>/dev/null | grep -c -v '^??' || true)"
@@ -79,27 +77,52 @@ _emit_worktree_record() {
     "$path" "$branch" "${head_sha:0:7}" "$is_main" "$is_detached" "$dirty_str" "$ahead_behind" "$upstream"
 }
 
-# Check if worktree has uncommitted or untracked changes
 worktree_dirty_check() {
   local path="$1"
-  if [[ ! -d "$path" ]]; then
-    return 2
-  fi
+  [[ ! -d "$path" ]] && return 2
   local dirty
   dirty="$(git -C "$path" status --porcelain 2>/dev/null || true)"
-  if [[ -n "$dirty" ]]; then
-    return 1
-  fi
+  [[ -n "$dirty" ]] && return 1
   return 0
 }
 
-# Create worktree for an existing or new branch
+# Check if branch is already checked out in any worktree
+worktree_find_branch_checkout() {
+  local root="$1"
+  local target_branch="$2"
+  local line path="" branch=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      worktree\ *) path="${line#worktree }" ;;
+      branch\ *)
+        branch="${line#branch refs/heads/}"
+        if [[ "$branch" == "$target_branch" ]]; then
+          printf '%s\n' "$path"
+          return 0
+        fi
+        ;;
+      "") path="" branch="" ;;
+    esac
+  done < <(git -C "$root" worktree list --porcelain 2>/dev/null)
+  return 1
+}
+
+# Create worktree for an existing or new branch with duplicate checkout guard
 worktree_create_branch() {
   local root="$1"
   local dest_path="$2"
   local branch="$3"
   local create_new="${4:-false}"
   local base_branch="${5:-}"
+
+  local existing_wt
+  if existing_wt="$(worktree_find_branch_checkout "$root" "$branch")"; then
+    log_err "Branch '$branch' is already checked out at: $existing_wt"
+    EXEC_STDERR="fatal: '$branch' is already checked out at '$existing_wt'"
+    EXEC_EXIT_CODE=1
+    return 1
+  fi
 
   if [[ "$create_new" == "true" ]]; then
     if [[ -n "$base_branch" ]]; then
@@ -112,16 +135,13 @@ worktree_create_branch() {
   fi
 }
 
-# Create detached worktree from commit / tag / sha
 worktree_create_detached() {
   local root="$1"
   local dest_path="$2"
   local commit_ish="$3"
-
   exec_git "$root" worktree add --detach "$dest_path" "$commit_ish"
 }
 
-# Remove worktree safely using git worktree remove
 worktree_remove() {
   local root="$1"
   local target_path="$2"

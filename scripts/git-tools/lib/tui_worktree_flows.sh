@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Git Tools - Worktree Local Action Flows (New, Detached, Remove, Multi-Remove)
+# Git Tools - Worktree Local Action Flows (New, Detached, Bulk, Remove)
 set -euo pipefail
 
 gwt_flow_new() {
@@ -27,6 +27,7 @@ gwt_flow_new() {
   if confirm "Proceed with creation?"; then
     if worktree_create_branch "$root" "$dest_path" "$branch" "$is_new" "$base_branch"; then
       log_ok "Worktree created at: $dest_path"
+      bootstrap_worktree "$root" "$dest_path" "$branch"
     else
       log_err "Failed to create worktree."
       [[ -n "$EXEC_STDERR" ]] && printf '%s\n' "$EXEC_STDERR" >&2
@@ -55,11 +56,52 @@ gwt_flow_detached() {
   if confirm "Proceed with creation?"; then
     if worktree_create_detached "$root" "$dest_path" "$commit_ish"; then
       log_ok "Detached worktree created at: $dest_path (HEAD at $rev)"
+      bootstrap_worktree "$root" "$dest_path" "$commit_ish"
     else
       log_err "Failed to create detached worktree."
       [[ -n "$EXEC_STDERR" ]] && printf '%s\n' "$EXEC_STDERR" >&2
     fi
   fi
+}
+
+# Mode C: Multiple worktrees, one branch each
+gwt_flow_bulk_create() {
+  local root="$1"
+  printf '\n%sSelect branches to create worktrees for (TAB to select, Enter to confirm):%s\n' "$C_YELLOW" "$C_RESET"
+  local branches=()
+  while IFS= read -r b; do
+    [[ -n "$b" ]] && branches+=("$b")
+  done < <(git -C "$root" for-each-ref --format="%(refname:short)" refs/heads/ 2>/dev/null)
+
+  local sel
+  sel="$(printf '%s\n' "${branches[@]}" | fzf --multi --reverse --prompt="Select branches for worktrees> ")" || return 0
+  local -a chosen=()
+  while IFS= read -r item; do
+    [[ -n "$item" ]] && chosen+=("$item")
+  done <<<"$sel"
+
+  [[ ${#chosen[@]} -eq 0 ]] && return 0
+
+  printf '\n%sBulk Worktree Creation Preview (%d):%s\n' "$C_BOLD" "${#chosen[@]}" "$C_RESET"
+  for b in "${chosen[@]}"; do
+    local p; p="$(format_worktree_path "$root" "$b")"
+    printf '  ● %-25s -> %s\n' "$b" "$p"
+  done
+
+  if ! confirm "Create all worktrees and run bootstrap?"; then
+    log_warn "Cancelled."
+    return 0
+  fi
+
+  for b in "${chosen[@]}"; do
+    local p; p="$(format_worktree_path "$root" "$b")"
+    if worktree_create_branch "$root" "$p" "$b" "false" ""; then
+      log_ok "Created $p for $b"
+      bootstrap_worktree "$root" "$p" "$b"
+    else
+      log_err "Failed for $b"
+    fi
+  done
 }
 
 gwt_flow_remove() {

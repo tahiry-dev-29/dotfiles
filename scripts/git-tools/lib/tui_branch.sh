@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Git Tools - Branch TUI Controller
+# Git Tools - Modern Responsive Branch TUI Controller
 set -euo pipefail
 
 ACTIVE_BRANCH_FILTER="ALL"
@@ -17,6 +17,9 @@ run_gb_tui() {
       [[ -n "$line" ]] && rows+=("$line")
     done < <(branch_list "$root" "$base_branch" "$ACTIVE_BRANCH_FILTER")
 
+    local mode
+    mode="$(terminal_get_mode)"
+
     if [[ ${#rows[@]} -eq 0 ]]; then
       log_warn "No branches found for filter: $ACTIVE_BRANCH_FILTER"
       printf '%sPress f to change filter, R to refresh, q to quit...%s\n' "$C_DIM" "$C_RESET"
@@ -30,27 +33,45 @@ run_gb_tui() {
       if [[ "$ACTIVE_BRANCH_FILTER" == "REMOTE" ]]; then
         local rb rdate rsubj
         IFS=$'\t' read -r rb rdate rsubj <<<"$r"
-        display_rows+=("$(printf '%s\t%-35s %-15s %s' "$rb" "$rb" "$rdate" "$rsubj")")
+        display_rows+=("$(printf '%s\t%-32s %-12s %s' "$rb" "$(truncate_text "$rb" 32)" "$rdate" "$(truncate_text "$rsubj" 30)")")
       else
         local b is_c is_m up ab wt subj
         IFS=$'\t' read -r b is_c is_m up ab wt subj <<<"$r"
         local marker=" "; [[ "$is_c" -eq 1 ]] && marker="●"
         local mrg="[unmerged]"; [[ "$is_m" -eq 1 ]] && mrg="[merged]  "
         local wt_l=""; [[ "$wt" != "-" ]] && wt_l="[wt: $(basename "$wt")]"
-        local label; label="$(printf '%-2s %-25s %-10s %-14s %-18s %s' "$marker" "$b" "$mrg" "$ab" "$wt_l" "$subj")"
+
+        local label
+        if [[ "$mode" == "wide" ]]; then
+          label="$(printf '%-2s %-24s %-10s %-12s %-16s %s' "$marker" "$(truncate_text "$b" 24)" "$mrg" "$ab" "$wt_l" "$(truncate_text "$subj" 30)")"
+        elif [[ "$mode" == "medium" ]]; then
+          label="$(printf '%-2s %-20s %-10s %-12s %s' "$marker" "$(truncate_text "$b" 20)" "$mrg" "$ab" "$wt_l")"
+        else
+          label="$(printf '%-2s %-18s %s' "$marker" "$(truncate_text "$b" 18)" "$mrg")"
+        fi
         display_rows+=("$(printf '%s\t%s' "$b" "$label")")
       fi
     done
 
+    local current_b
+    current_b="$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
+
     local header
-    header="$(printf 'Repo: %s | Base: %s | Filter: [%s]\nEnter=Details | s=Switch | w=Worktree | d=Delete | p=PR | f=Filter | m=Multi | ?=Help | q=Quit' \
-      "$(basename "$root")" "$base_branch" "$ACTIVE_BRANCH_FILTER")"
+    header="$(render_header "GB" "$(basename "$root")" "$current_b" "Filter: [$ACTIVE_BRANCH_FILTER] · Base: $base_branch")"
+    local footer
+    footer="$(render_footer "gb" "$mode")"
+    local full_header="${header}"$'\n'"${footer}"
+
+    local preview_opt="right:45%:wrap"
+    [[ "$mode" == "medium" ]] && preview_opt="right:35%:wrap"
+    [[ "$mode" == "narrow" ]] && preview_opt="down:40%:wrap:hidden"
+
     local preview_cmd
-    preview_cmd="git -C '$root' log --oneline -10 --graph '{1}' 2>/dev/null; echo '--- diff with base ---'; git -C '$root' diff --stat '$base_branch...{1}' 2>/dev/null | head -15"
+    preview_cmd="source '$LIB_DIR/core.sh' 2>/dev/null; source '$LIB_DIR/preview_service.sh' 2>/dev/null; preview_render_branch '$root' {1} '$base_branch'"
 
     local fzf_out key selected_line selected_branch
     fzf_out="$(printf '%s\n' "${display_rows[@]}" | \
-      ui_select "gb> " "$header" "enter,s,w,d,p,f,m,R,?,q,esc" "$preview_cmd" $'\t' 2 false)" || break
+      ui_select "gb> " "$full_header" "enter,s,w,d,p,f,m,R,?,q,esc" "$preview_cmd" $'\t' 2 false "$preview_opt")" || break
 
     key="$(head -n1 <<<"$fzf_out")"
     selected_line="$(sed -n 2p <<<"$fzf_out")"

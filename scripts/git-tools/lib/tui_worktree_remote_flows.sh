@@ -41,7 +41,9 @@ gwt_flow_pr() {
 
   ui_preview_action "Create Worktree from PR #$pr_num ($mode)" "pr_create_worktree $root $pr_num $dest_path $mode"
   if confirm "Proceed?"; then
-    pr_create_worktree "$root" "$pr_num" "$dest_path" "$mode"
+    if pr_create_worktree "$root" "$pr_num" "$dest_path" "$mode"; then
+      bootstrap_worktree "$root" "$dest_path" "PR #$pr_num ($mode)"
+    fi
   fi
 }
 
@@ -76,7 +78,11 @@ gwt_flow_issue() {
   title="$(cut -f2 <<<"$sel")"
   [[ -z "$num" ]] && return
 
-  issue_create_worktree "$root" "$num" "$title"
+  local dest_p
+  dest_p="$(issue_create_worktree "$root" "$num" "$title")" || return
+  if [[ -n "$dest_p" && -d "$dest_p" ]]; then
+    bootstrap_worktree "$root" "$dest_p" "Issue #$num"
+  fi
 }
 
 gwt_flow_commit() {
@@ -106,13 +112,17 @@ gwt_flow_commit() {
     local dest_path; dest_path="$(prompt_input "Destination directory" "$(format_worktree_path "$root" "$branch")")"
     ui_preview_action "Create Worktree from commit" "git worktree add -b $branch $dest_path $sha"
     if confirm "Create worktree?"; then
-      worktree_create_branch "$root" "$dest_path" "$branch" "true" "$sha"
+      if worktree_create_branch "$root" "$dest_path" "$branch" "true" "$sha"; then
+        bootstrap_worktree "$root" "$dest_path" "commit $sha"
+      fi
     fi
   else
     local dest_path; dest_path="$(prompt_input "Destination directory" "$(format_worktree_path "$root" "detached-$sha")")"
     ui_preview_action "Create Detached Worktree" "git worktree add --detach $dest_path $sha"
     if confirm "Create detached worktree?"; then
-      worktree_create_detached "$root" "$dest_path" "$sha"
+      if worktree_create_detached "$root" "$dest_path" "$sha"; then
+        bootstrap_worktree "$root" "$dest_path" "detached $sha"
+      fi
     fi
   fi
 }
@@ -144,6 +154,8 @@ gwt_flow_tag() {
   local dest_path; dest_path="$(prompt_input "Destination directory" "$(format_worktree_path "$root" "$tag")")"
   ui_preview_action "Create Detached Worktree from Tag" "git worktree add --detach $dest_path $tag"
   if confirm "Create detached worktree?"; then
-    worktree_create_detached "$root" "$dest_path" "$tag"
+    if worktree_create_detached "$root" "$dest_path" "$tag"; then
+      bootstrap_worktree "$root" "$dest_path" "tag $tag"
+    fi
   fi
 }

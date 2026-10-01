@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Git Tools - Worktree TUI Controller
+# Git Tools - Modern Responsive Worktree TUI Controller
 set -euo pipefail
 
 run_gwt_tui() {
@@ -14,34 +14,56 @@ run_gwt_tui() {
     done < <(worktree_list "$root")
 
     if [[ ${#rows[@]} -eq 0 ]]; then
-      log_warn "No worktrees found."
+      log_warn "No worktrees found in $root."
       return 0
     fi
+
+    local mode
+    mode="$(terminal_get_mode)"
 
     for r in "${rows[@]}"; do
       # Format: path TAB branch TAB head_sha TAB is_main TAB is_detached TAB dirty_str TAB ahead_behind TAB upstream
       local p b sha is_m is_d dirty ab up
       IFS=$'\t' read -r p b sha is_m is_d dirty ab up <<<"$r"
-      local marker=" "
+
+      local marker="○"
       [[ "$is_m" -eq 1 ]] && marker="●"
       [[ "$is_d" -eq 1 ]] && marker="⬡"
 
+      local t_path
+      t_path="$(truncate_path "$p" 38)"
+
       local label
-      label="$(printf '%-2s %-25s %-8s %-24s %-12s %s' "$marker" "$b" "$sha" "$dirty" "$ab" "$p")"
+      if [[ "$mode" == "wide" ]]; then
+        label="$(printf '%-2s %-24s %-8s %-24s %-10s %s' "$marker" "$(truncate_text "$b" 24)" "$sha" "$dirty" "$ab" "$t_path")"
+      elif [[ "$mode" == "medium" ]]; then
+        label="$(printf '%-2s %-20s %-18s %s' "$marker" "$(truncate_text "$b" 20)" "$dirty" "$t_path")"
+      else
+        label="$(printf '%-2s %-18s %s' "$marker" "$(truncate_text "$b" 18)" "$dirty")"
+      fi
       display_rows+=("$(printf '%s\t%s' "$p" "$label")")
     done
 
     local current_b
     current_b="$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
+
     local header
-    header="$(printf 'Repo: %s | Current: %s | Worktrees: %d\nEnter=Open | n=New | p=PR | i=Issue | c=Commit | t=Tag | d=Detach | r=Remove | m=Multi | ?=Help | q=Quit' \
-      "$(basename "$root")" "$current_b" "${#rows[@]}")"
+    header="$(render_header "GWT" "$(basename "$root")" "$current_b" "${#rows[@]} worktrees")"
+    local footer
+    footer="$(render_footer "gwt" "$mode")"
+    local full_header="${header}"$'\n'"${footer}"
+
+    # Preview configuration according to responsive layout
+    local preview_opt="right:45%:wrap"
+    [[ "$mode" == "medium" ]] && preview_opt="right:35%:wrap"
+    [[ "$mode" == "narrow" ]] && preview_opt="down:40%:wrap:hidden"
+
     local preview_cmd
-    preview_cmd="git -C {1} log --oneline -5 --decorate 2>/dev/null; echo '--- status ---'; git -C {1} status --short 2>/dev/null"
+    preview_cmd="source '$LIB_DIR/core.sh' 2>/dev/null; source '$LIB_DIR/preview_service.sh' 2>/dev/null; preview_render_worktree {1}"
 
     local fzf_out key selected_path
     fzf_out="$(printf '%s\n' "${display_rows[@]}" | \
-      ui_select "gwt> " "$header" "enter,n,p,i,c,t,d,r,m,R,?,q,esc" "$preview_cmd" $'\t' 2 false)" || break
+      ui_select "gwt> " "$full_header" "enter,n,p,i,c,t,d,r,m,R,?,q,esc" "$preview_cmd" $'\t' 2 false "$preview_opt")" || break
 
     key="$(head -n1 <<<"$fzf_out")"
     local selected_line
