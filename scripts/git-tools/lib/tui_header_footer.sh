@@ -10,7 +10,7 @@ render_header() {
   local meta_info="$4"
 
   printf '%s%s · %s%s\n' "$C_BOLD" "$tool_title" "$repo_name" "$C_RESET"
-  printf '%sbranch: %s%s · %s%s\n' "$C_CYAN" "$current_branch" "$C_RESET" "$C_DIM" "$meta_info" "$C_RESET"
+  printf '%sbranch: %s%s · %s%s%s\n' "$C_CYAN" "$current_branch" "$C_RESET" "$C_DIM" "$meta_info" "$C_RESET"
 }
 
 # Render contextual footer based on layout mode

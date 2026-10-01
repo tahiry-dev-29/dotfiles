@@ -38,7 +38,11 @@ confirm() {
     printf '%s%s [y/N]: %s' "$C_YELLOW" "$prompt" "$C_RESET"
   fi
 
-  read -r reply </dev/tty || reply="$default"
+  if [[ "${GIT_TOOLS_NON_INTERACTIVE:-0}" == "1" ]]; then
+    reply="$default"
+  else
+    read -r reply </dev/tty || reply="$default"
+  fi
   reply="$(trim "$reply")"
   reply="${reply,,}" # lowercase
 
@@ -61,7 +65,11 @@ prompt_input() {
     printf '%s%s: %s' "$C_CYAN" "$prompt" "$C_RESET"
   fi
 
-  read -r value </dev/tty || value=""
+  if [[ "${GIT_TOOLS_NON_INTERACTIVE:-0}" == "1" ]]; then
+    value="$default"
+  else
+    read -r value </dev/tty || value=""
+  fi
   value="$(trim "$value")"
   if [[ -z "$value" ]]; then
     printf '%s\n' "$default"

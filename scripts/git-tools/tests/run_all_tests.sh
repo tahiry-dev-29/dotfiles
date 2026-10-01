@@ -13,6 +13,7 @@ SUITES=(
   "test_github.sh"
   "test_bootstrap.sh"
   "test_layout.sh"
+  "test_manual_tui.sh"
 )
 
 TOTAL_SUITES=${#SUITES[@]}

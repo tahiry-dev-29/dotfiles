@@ -74,7 +74,11 @@ show_branch_details() {
 
   printf '%sChoice: %s' "$C_BOLD" "$C_RESET"
   local action
-  read -r -n 1 action </dev/tty || action=""
+  if [[ "${GIT_TOOLS_NON_INTERACTIVE:-0}" == "1" ]]; then
+    action="b"
+  else
+    read -r -n 1 action </dev/tty || action=""
+  fi
   printf '\n'
 
   case "$action" in

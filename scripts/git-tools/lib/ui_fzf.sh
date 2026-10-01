@@ -40,6 +40,7 @@ ui_select() {
 }
 
 ui_pause() {
+  [[ "${GIT_TOOLS_NON_INTERACTIVE:-0}" == "1" ]] && return 0
   printf '\n%sPress Enter to continue...%s' "$C_DIM" "$C_RESET"
   read -r _ </dev/tty || true
 }
