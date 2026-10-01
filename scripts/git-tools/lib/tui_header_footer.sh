@@ -18,22 +18,21 @@ render_footer() {
   local context="$1"     # gwt or gb
   local mode="${2:-wide}" # wide, medium, narrow
 
-  if [[ "$mode" == "narrow" ]]; then
-    printf '↑↓ Move │ TAB Select │ Enter Details │ ? Help │ q Quit'
-    return 0
-  fi
-
   if [[ "$context" == "gwt" ]]; then
-    if [[ "$mode" == "wide" ]]; then
-      printf '↑↓ Move │ TAB Select │ Enter Open │ n New │ p PR │ i Issue │ c Commit │ t Tag │ m Multi │ r Remove │ ? Help │ q Quit'
+    if [[ "$mode" == "narrow" ]]; then
+      printf '%sEnter%s Open  %sn%s New  %sd%s Remove  %s?%s Help  %sq%s Quit\n' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
+      printf '%sp%s PR  %si%s Issue  %sc%s Commit  %st%s Tag  %sm%s Multi' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
     else
-      printf '↑↓ Move │ TAB Select │ Enter Open │ n New │ p PR │ i Issue │ m Multi │ r Remove │ ? Help │ q Quit'
+      printf '%sEnter%s Open   %sn%s New    %sp%s PR       %si%s Issue    %sc%s Commit  %st%s Tag\n' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
+      printf '%sd%s Remove   %sm%s Multi  %sR%s Refresh  %s?%s Help     %sq%s Quit' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
     fi
   else
-    if [[ "$mode" == "wide" ]]; then
-      printf '↑↓ Move │ TAB Select │ Enter Details │ s Switch │ w Worktree │ d Delete │ p PR │ f Filter │ m Multi │ ? Help │ q Quit'
+    if [[ "$mode" == "narrow" ]]; then
+      printf '%sEnter%s Details  %ss%s Switch  %sd%s Delete  %s?%s Help  %sq%s Quit\n' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
+      printf '%sw%s Worktree  %sp%s PR  %sf%s Filter  %sm%s Multi' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
     else
-      printf '↑↓ Move │ TAB Select │ Enter Details │ s Switch │ w Worktree │ d Delete │ f Filter │ m Multi │ ? Help │ q Quit'
+      printf '%sEnter%s Details  %ss%s Switch  %sw%s Worktree  %sd%s Delete  %sp%s PR\n' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
+      printf '%sf%s Filter     %sm%s Multi   %sR%s Refresh   %s?%s Help    %sq%s Quit' "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET" "$C_CYAN" "$C_RESET"
     fi
   fi
 }

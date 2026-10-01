@@ -63,10 +63,10 @@ assert_true "grep -q 'GWT · my-project' <<<'$HEADER'" "Header contains title an
 assert_true "grep -q 'branch: main' <<<'$HEADER'" "Header contains branch"
 
 FOOTER_NARROW="$(render_footer "gwt" "narrow")"
-assert_true "grep -q '? Help' <<<'$FOOTER_NARROW'" "Narrow footer is compact"
+assert_true "grep -q 'Help' <<<'$FOOTER_NARROW'" "Narrow footer is compact"
 
 FOOTER_WIDE="$(render_footer "gwt" "wide")"
-assert_true "grep -q 'n New' <<<'$FOOTER_WIDE'" "Wide footer contains full action set"
+assert_true "grep -q 'New' <<<'$FOOTER_WIDE'" "Wide footer contains full action set"
 
 echo ""
 echo "=== Layout Tests Summary: $PASSED passed, $FAILED failed ==="

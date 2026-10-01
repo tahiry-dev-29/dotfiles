@@ -6,11 +6,11 @@ set -euo pipefail
 # Modes: wide (>= 120 cols), medium (80-119 cols), narrow (< 80 cols)
 terminal_get_mode() {
   local cols
-  cols="$(tput cols 2>/dev/null || echo 100)"
+  cols="$(terminal_get_cols)"
 
-  if (( cols >= 120 )); then
+  if (( cols >= 130 )); then
     echo "wide"
-  elif (( cols >= 80 )); then
+  elif (( cols >= 90 )); then
     echo "medium"
   else
     echo "narrow"

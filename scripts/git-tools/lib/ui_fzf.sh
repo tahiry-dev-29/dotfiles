@@ -28,6 +28,7 @@ ui_select() {
     --header="$header"
     --expect="$expect_keys"
     --delimiter="$delimiter"
+    --bind="ctrl-/:toggle-preview"
   )
 
   [[ -n "$with_nth" ]] && fzf_opts+=(--with-nth="$with_nth")

@@ -45,9 +45,9 @@ run_gb_tui() {
         if [[ "$mode" == "wide" ]]; then
           label="$(printf '%-2s %-24s %-10s %-12s %-16s %s' "$marker" "$(truncate_text "$b" 24)" "$mrg" "$ab" "$wt_l" "$(truncate_text "$subj" 30)")"
         elif [[ "$mode" == "medium" ]]; then
-          label="$(printf '%-2s %-20s %-10s %-12s %s' "$marker" "$(truncate_text "$b" 20)" "$mrg" "$ab" "$wt_l")"
+          label="$(printf '%-2s %-22s %-10s %-10s %-16s %s' "$marker" "$(truncate_text "$b" 22)" "$mrg" "$ab" "$wt_l" "$(truncate_text "$subj" 25)")"
         else
-          label="$(printf '%-2s %-18s %s' "$marker" "$(truncate_text "$b" 18)" "$mrg")"
+          label="$(printf '%-2s %-18s %-10s %s' "$marker" "$(truncate_text "$b" 18)" "$mrg" "$wt_l")"
         fi
         display_rows+=("$(printf '%s\t%s' "$b" "$label")")
       fi
@@ -62,9 +62,9 @@ run_gb_tui() {
     footer="$(render_footer "gb" "$mode")"
     local full_header="${header}"$'\n'"${footer}"
 
-    local preview_opt="right:45%:wrap"
-    [[ "$mode" == "medium" ]] && preview_opt="right:35%:wrap"
-    [[ "$mode" == "narrow" ]] && preview_opt="down:40%:wrap:hidden"
+    local preview_opt="right:40%:wrap"
+    [[ "$mode" == "medium" ]] && preview_opt="down:40%:wrap"
+    [[ "$mode" == "narrow" ]] && preview_opt="down:45%:wrap:hidden"
 
     local preview_cmd
     preview_cmd="source '$LIB_DIR/core.sh' 2>/dev/null; source '$LIB_DIR/preview_service.sh' 2>/dev/null; preview_render_branch '$root' {1} '$base_branch'"

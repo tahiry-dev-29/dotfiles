@@ -35,11 +35,11 @@ run_gwt_tui() {
 
       local label
       if [[ "$mode" == "wide" ]]; then
-        label="$(printf '%-2s %-24s %-8s %-24s %-10s %s' "$marker" "$(truncate_text "$b" 24)" "$sha" "$dirty" "$ab" "$t_path")"
+        label="$(printf '%-2s %-24s %-8s %-20s %-8s %s' "$marker" "$(truncate_text "$b" 24)" "$sha" "$dirty" "$ab" "$t_path")"
       elif [[ "$mode" == "medium" ]]; then
-        label="$(printf '%-2s %-20s %-18s %s' "$marker" "$(truncate_text "$b" 20)" "$dirty" "$t_path")"
+        label="$(printf '%-2s %-22s %-8s %-16s %-8s %s' "$marker" "$(truncate_text "$b" 22)" "$sha" "$dirty" "$ab" "$t_path")"
       else
-        label="$(printf '%-2s %-18s %s' "$marker" "$(truncate_text "$b" 18)" "$dirty")"
+        label="$(printf '%-2s %-18s %-12s %s' "$marker" "$(truncate_text "$b" 18)" "$dirty" "$(truncate_path "$p" 22)")"
       fi
       display_rows+=("$(printf '%s\t%s' "$p" "$label")")
     done
@@ -54,9 +54,9 @@ run_gwt_tui() {
     local full_header="${header}"$'\n'"${footer}"
 
     # Preview configuration according to responsive layout
-    local preview_opt="right:45%:wrap"
-    [[ "$mode" == "medium" ]] && preview_opt="right:35%:wrap"
-    [[ "$mode" == "narrow" ]] && preview_opt="down:40%:wrap:hidden"
+    local preview_opt="right:40%:wrap"
+    [[ "$mode" == "medium" ]] && preview_opt="down:40%:wrap"
+    [[ "$mode" == "narrow" ]] && preview_opt="down:45%:wrap:hidden"
 
     local preview_cmd
     preview_cmd="source '$LIB_DIR/core.sh' 2>/dev/null; source '$LIB_DIR/preview_service.sh' 2>/dev/null; preview_render_worktree {1}"
