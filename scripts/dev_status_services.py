@@ -113,8 +113,38 @@ def discover_services() -> List[Dict[str, Any]]:
 
     return services
 
+def _has_socket_unit(unit: str, sudo_password: Optional[str] = None) -> bool:
+    """Check if a companion .socket unit exists and is active."""
+    socket_unit = f"{unit}.socket"
+    try:
+        res = subprocess.run(
+            ["systemctl", "is-active", socket_unit],
+            capture_output=True, text=True
+        )
+        return res.stdout.strip() == "active"
+    except Exception:
+        return False
+
+def _run_systemctl(action: str, unit: str, sudo_password: Optional[str] = None) -> tuple[bool, str]:
+    """Run systemctl <action> <unit> safely with optional sudo."""
+    if sudo_password:
+        cmd = ["sudo", "-S", "systemctl", action, unit]
+        input_data = sudo_password + "\n"
+    else:
+        cmd = ["sudo", "-n", "systemctl", action, unit]
+        input_data = None
+    res = subprocess.run(cmd, input=input_data, capture_output=True, text=True)
+    if res.returncode == 0:
+        return True, ""
+    return False, res.stderr.strip() or "Permission denied"
+
 def stop_service_safely(svc: Dict[str, Any], sudo_password: Optional[str] = None) -> tuple[bool, str]:
-    """Safely stop a service without shell eval."""
+    """
+    Safely stop a systemd or docker service.
+
+    For systemd: also stops the companion .socket unit (if active) to prevent
+    socket-activated services (like docker.socket) from auto-restarting the service.
+    """
     provider = svc.get("provider")
     name = svc.get("name", "Unknown")
 
@@ -122,13 +152,17 @@ def stop_service_safely(svc: Dict[str, Any], sudo_password: Optional[str] = None
         unit = svc.get("unit")
         if not unit:
             return False, f"Missing unit for {name}"
-        cmd = ["sudo", "-S", "systemctl", "stop", unit] if sudo_password else ["sudo", "-n", "systemctl", "stop", unit]
-        input_data = (sudo_password + "\n") if sudo_password else None
-        res = subprocess.run(cmd, input=input_data, capture_output=True, text=True)
-        if res.returncode == 0:
-            return True, f"Service {name} stopped"
-        err_msg = res.stderr.strip() or "Permission denied or failed to stop"
-        return False, f"Failed to stop {name}: {err_msg}"
+
+        # Stop the service itself
+        ok, err = _run_systemctl("stop", unit, sudo_password)
+        if not ok:
+            return False, f"Failed to stop {name}: {err}"
+
+        # Also stop companion .socket unit if active (prevents socket-activation revival)
+        if _has_socket_unit(unit):
+            _run_systemctl("stop", f"{unit}.socket", sudo_password)
+
+        return True, f"Service {name} stopped"
 
     elif provider == "docker":
         cid = svc.get("container_id")
@@ -142,7 +176,12 @@ def stop_service_safely(svc: Dict[str, Any], sudo_password: Optional[str] = None
     return False, f"Unknown service provider: {provider}"
 
 def start_service_safely(svc: Dict[str, Any], sudo_password: Optional[str] = None) -> tuple[bool, str]:
-    """Safely start a service without shell eval."""
+    """
+    Safely start a systemd or docker service.
+
+    For systemd: also starts the companion .socket unit if one exists
+    (e.g. docker.socket), ensuring the service is fully operational.
+    """
     provider = svc.get("provider")
     name = svc.get("name", "Unknown")
 
@@ -150,13 +189,21 @@ def start_service_safely(svc: Dict[str, Any], sudo_password: Optional[str] = Non
         unit = svc.get("unit")
         if not unit:
             return False, f"Missing unit for {name}"
-        cmd = ["sudo", "-S", "systemctl", "start", unit] if sudo_password else ["sudo", "-n", "systemctl", "start", unit]
-        input_data = (sudo_password + "\n") if sudo_password else None
-        res = subprocess.run(cmd, input=input_data, capture_output=True, text=True)
-        if res.returncode == 0:
+
+        # Start the socket unit first if it exists (ensures socket-activation works)
+        socket_unit = f"{unit}.socket"
+        res_check = subprocess.run(
+            ["systemctl", "list-unit-files", socket_unit, "--no-legend"],
+            capture_output=True, text=True
+        )
+        if socket_unit in res_check.stdout:
+            _run_systemctl("start", socket_unit, sudo_password)
+
+        # Start the service
+        ok, err = _run_systemctl("start", unit, sudo_password)
+        if ok:
             return True, f"Service {name} started"
-        err_msg = res.stderr.strip() or "Permission denied or failed to start"
-        return False, f"Failed to start {name}: {err_msg}"
+        return False, f"Failed to start {name}: {err}"
 
     elif provider == "docker":
         cid = svc.get("container_id")
