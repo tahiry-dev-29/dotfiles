@@ -11,7 +11,7 @@ import re
 import os
 import json
 from typing import List, Dict, Any, Optional
-from dev_status_process import validate_port, validate_pid
+from dev_status_process import validate_port, validate_pid, get_pid_resources
 
 KNOWN_INFRA_PORTS = {
     5432: "PostgreSQL",
@@ -218,6 +218,7 @@ def discover_ports() -> List[Dict[str, Any]]:
 
                     proj_dir = get_project_for_pid(pid, cmdline) if pid else "N/A"
                     srv_name = normalize_service_name(proc, p_val, cmdline, proj_dir)
+                    res_info = get_pid_resources(pid) if pid else {"cpu": None, "rss_mb": None}
                     records[p_val] = {
                         "port": p_val,
                         "protocol": proto,
@@ -226,7 +227,9 @@ def discover_ports() -> List[Dict[str, Any]]:
                         "service": srv_name,
                         "pid": pid,
                         "state": state,
-                        "project": proj_dir
+                        "project": proj_dir,
+                        "rss_mb": res_info["rss_mb"],
+                        "cpu": res_info["cpu"],
                     }
     except Exception:
         pass
@@ -252,6 +255,7 @@ def discover_ports() -> List[Dict[str, Any]]:
                     
                     proj_dir = get_project_for_pid(target_pid, cmdline)
                     srv_name = normalize_service_name(p_name, p, cmdline, proj_dir)
+                    res_info = get_pid_resources(target_pid)
                     records[p] = {
                         "port": p,
                         "protocol": "TCP",
@@ -260,7 +264,9 @@ def discover_ports() -> List[Dict[str, Any]]:
                         "service": srv_name,
                         "pid": target_pid,
                         "state": "LISTEN",
-                        "project": proj_dir
+                        "project": proj_dir,
+                        "rss_mb": res_info["rss_mb"],
+                        "cpu": res_info["cpu"],
                     }
             except Exception:
                 pass

@@ -10,7 +10,7 @@ import subprocess
 import os
 import re
 from typing import List, Dict, Any, Optional
-from dev_status_process import validate_pid, terminate_process_safely, validate_port
+from dev_status_process import validate_pid, terminate_process_safely, validate_port, get_pid_resources
 from dev_status_ports import get_project_for_pid, inspect_package_json, detect_real_dev_service
 
 DEV_PORTS_MAP = [
@@ -116,6 +116,7 @@ def discover_dev_servers() -> List[Dict[str, Any]]:
                             cwd = get_project_for_pid(pid, cmdline)
                             framework = detect_framework(comm, cmdline, cwd)
                             project_name = os.path.basename(cwd) if cwd and cwd != "N/A" else f"port-{p_val}"
+                            res_info = get_pid_resources(pid)
 
                             servers.append({
                                 "project": project_name,
@@ -124,7 +125,9 @@ def discover_dev_servers() -> List[Dict[str, Any]]:
                                 "pid": pid,
                                 "port": p_val,
                                 "directory": cwd,
-                                "state": "running"
+                                "state": "running",
+                                "rss_mb": res_info["rss_mb"],
+                                "cpu": res_info["cpu"],
                             })
     except Exception:
         pass
@@ -157,6 +160,7 @@ def discover_dev_servers() -> List[Dict[str, Any]]:
                 cwd = get_project_for_pid(pid, cmdline)
                 framework = detect_framework(comm, cmdline, cwd)
                 project_name = os.path.basename(cwd) if cwd and cwd != "N/A" else f"port-{port}"
+                res_info = get_pid_resources(pid)
 
                 servers.append({
                     "project": project_name,
@@ -165,7 +169,9 @@ def discover_dev_servers() -> List[Dict[str, Any]]:
                     "pid": pid,
                     "port": port,
                     "directory": cwd,
-                    "state": "running"
+                    "state": "running",
+                    "rss_mb": res_info["rss_mb"],
+                    "cpu": res_info["cpu"],
                 })
         except Exception:
             pass
@@ -221,6 +227,7 @@ def discover_dev_servers() -> List[Dict[str, Any]]:
                         cwd = get_project_for_pid(pid_val, args)
                         framework = detect_framework(comm, args, cwd)
                         project_name = os.path.basename(cwd) if cwd and cwd != "N/A" else "dev-app"
+                        res_info = get_pid_resources(pid_val)
 
                         servers.append({
                             "project": project_name,
@@ -229,7 +236,9 @@ def discover_dev_servers() -> List[Dict[str, Any]]:
                             "pid": pid_val,
                             "port": detected_port,
                             "directory": cwd,
-                            "state": "running"
+                            "state": "running",
+                            "rss_mb": res_info["rss_mb"],
+                            "cpu": res_info["cpu"],
                         })
     except Exception:
         pass

@@ -7,7 +7,73 @@ import os
 import signal
 import time
 import subprocess
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict, Any
+
+# Cached system clock ticks per second (for CPU% calculation)
+_CLK_TCK = os.sysconf("SC_CLK_TCK") if hasattr(os, "sysconf") else 100
+
+
+def get_pid_resources(pid: Optional[int]) -> Dict[str, Any]:
+    """
+    Read CPU % and RSS memory (in MB) for a given PID directly from /proc.
+    Returns dict: {'cpu': float | None, 'rss_mb': float | None}
+
+    CPU % is computed as a snapshot against process lifetime (cumulative), which
+    gives a "total average" rather than instantaneous — suitable for a TUI list view.
+    For a more responsive instantaneous reading, two samples 0.3s apart are taken.
+    """
+    result: Dict[str, Any] = {"cpu": None, "rss_mb": None}
+
+    if not pid:
+        return result
+
+    def read_stat(p: int):
+        try:
+            with open(f"/proc/{p}/stat", "r") as f:
+                return f.read().split()
+        except Exception:
+            return None
+
+    def read_rss_kb(p: int) -> Optional[float]:
+        """Read VmRSS from /proc/{p}/status (kB)."""
+        try:
+            with open(f"/proc/{p}/status", "r") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            return float(parts[1])
+        except Exception:
+            pass
+        return None
+
+    # RSS
+    rss_kb = read_rss_kb(pid)
+    if rss_kb is not None:
+        result["rss_mb"] = round(rss_kb / 1024.0, 1)
+
+    # CPU% — two-sample approach (delta over ~0.3 s)
+    try:
+        stat1 = read_stat(pid)
+        if stat1 and len(stat1) > 14:
+            utime1 = int(stat1[13])
+            stime1 = int(stat1[14])
+            t1 = time.time()
+            time.sleep(0.3)
+            stat2 = read_stat(pid)
+            t2 = time.time()
+            if stat2 and len(stat2) > 14:
+                utime2 = int(stat2[13])
+                stime2 = int(stat2[14])
+                delta_ticks = (utime2 + stime2) - (utime1 + stime1)
+                delta_sec = t2 - t1
+                if delta_sec > 0:
+                    cpu_pct = (delta_ticks / _CLK_TCK) / delta_sec * 100.0
+                    result["cpu"] = round(cpu_pct, 1)
+    except Exception:
+        pass
+
+    return result
 
 def validate_port(port_val) -> Optional[int]:
     """Validate port as integer within valid port range (1-65535)."""

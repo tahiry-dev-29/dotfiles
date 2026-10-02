@@ -8,6 +8,7 @@ import subprocess
 import shutil
 import re
 from typing import List, Dict, Any, Optional
+from dev_status_process import get_pid_resources
 
 SYSTEMD_SERVICES = [
     {"name": "PostgreSQL", "unit": "postgresql", "port": 5432},
@@ -61,6 +62,7 @@ def discover_services() -> List[Dict[str, Any]]:
                             if ts:
                                 uptime = ts
 
+                res_info = get_pid_resources(pid)
                 services.append({
                     "name": s["name"],
                     "state": state,
@@ -70,7 +72,9 @@ def discover_services() -> List[Dict[str, Any]]:
                     "uptime": uptime,
                     "unit": unit,
                     "container_id": None,
-                    "id": f"systemd:{unit}"
+                    "id": f"systemd:{unit}",
+                    "rss_mb": res_info["rss_mb"],
+                    "cpu": res_info["cpu"],
                 })
             except Exception:
                 pass
@@ -97,6 +101,38 @@ def discover_services() -> List[Dict[str, Any]]:
                         port_match = re.search(r':(\d+)->', ports_str)
                         port = int(port_match.group(1)) if port_match else 0
 
+                        cpu_pct = None
+                        rss_mb = None
+                        if is_up:
+                            try:
+                                stats_res = subprocess.run(
+                                    ["docker", "stats", "--no-stream", "--format",
+                                     "{{.CPUPerc}}\t{{.MemUsage}}", cid],
+                                    capture_output=True, text=True, timeout=2.0
+                                )
+                                if stats_res.returncode == 0 and stats_res.stdout.strip():
+                                    s_parts = stats_res.stdout.strip().split("\t")
+                                    if s_parts:
+                                        cpu_str = s_parts[0].replace("%", "").strip()
+                                        try:
+                                            cpu_pct = round(float(cpu_str), 1)
+                                        except ValueError:
+                                            pass
+                                    if len(s_parts) > 1:
+                                        mem_str = s_parts[1].split("/")[0].strip()
+                                        # Parse e.g. "123.4MiB" or "1.2GiB"
+                                        m = __import__("re").match(r"([\d.]+)\s*([KMGT]i?B?)", mem_str, __import__("re").IGNORECASE)
+                                        if m:
+                                            val, unit_s = float(m.group(1)), m.group(2).upper()
+                                            if "G" in unit_s:
+                                                rss_mb = round(val * 1024, 1)
+                                            elif "M" in unit_s:
+                                                rss_mb = round(val, 1)
+                                            elif "K" in unit_s:
+                                                rss_mb = round(val / 1024, 1)
+                            except Exception:
+                                pass
+
                         services.append({
                             "name": cname,
                             "state": state,
@@ -106,7 +142,9 @@ def discover_services() -> List[Dict[str, Any]]:
                             "uptime": status_str,
                             "unit": None,
                             "container_id": cid,
-                            "id": f"docker:{cid}"
+                            "id": f"docker:{cid}",
+                            "rss_mb": rss_mb,
+                            "cpu": cpu_pct,
                         })
         except Exception:
             pass

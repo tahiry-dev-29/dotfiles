@@ -78,10 +78,12 @@ alias fix-gpg='gpg --refresh-keys'
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 2. SERVICES 🐳  (Multi-Platform: Linux · macOS · WSL)
+# 2. SERVICES 🐳  (Internal helper — used by dev-status data layer)
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Internal helper — wraps systemctl / brew services / net.exe depending on OS
+# _svc: internal OS-agnostic service control helper.
+# Used by the dev-status data-discovery layer in zsh_functions.zsh.
+# Not intended to be called directly.
 _svc() {
   local action="$1" service="$2"
   if _os_is_mac; then
@@ -103,53 +105,6 @@ _svc() {
   else
     sudo systemctl "$action" "$service"
   fi
-}
-
-# PostgreSQL
-pg-start()   { echo "🐘 Starting PostgreSQL...";  _svc start postgresql   && echo "✅ PostgreSQL started"; }
-pg-stop()    { echo "🐘 Stopping PostgreSQL...";  _svc stop  postgresql   && echo "✅ PostgreSQL stopped"; }
-pg-status()  { echo "🐘 PostgreSQL status:";       _svc status postgresql; }
-pg-restart() { echo "🐘 Restarting PostgreSQL..."; _svc restart postgresql && echo "✅ PostgreSQL restarted"; }
-pg-log() {
-  if _os_is_mac; then
-    tail -f /opt/homebrew/var/log/postgresql*.log 2>/dev/null || \
-    tail -f /usr/local/var/log/postgresql*.log 2>/dev/null || \
-    echo "⚠️  PostgreSQL log not found. Try: brew info postgresql"
-  else
-    echo "🐘 Following PostgreSQL logs (Ctrl+C to exit)..."
-    sudo journalctl -u postgresql -f
-  fi
-}
-start-sql() { pg-start; }
-stop-sql()  { pg-stop; }
-
-# MySQL
-my-start()  { echo "🐬 Starting MySQL..."; _svc start  mysql && echo "✅ MySQL started"; }
-my-stop()   { echo "🐬 Stopping MySQL..."; _svc stop   mysql && echo "✅ MySQL stopped"; }
-my-status() { echo "🐬 MySQL status:";     _svc status mysql; }
-
-# MongoDB
-mg-start()  { echo "🍃 Starting MongoDB..."; _svc start  mongod && echo "✅ MongoDB started"; }
-mg-stop()   { echo "🍃 Stopping MongoDB..."; _svc stop   mongod && echo "✅ MongoDB stopped"; }
-mg-status() { echo "🍃 MongoDB status:";     _svc status mongod; }
-
-# Redis
-re-start()  { echo "🔴 Starting Redis..."; _svc start  redis-server && echo "✅ Redis started"; }
-re-stop()   { echo "🔴 Stopping Redis..."; _svc stop   redis-server && echo "✅ Redis stopped"; }
-alias re-cli='echo "🔴 Connecting to Redis CLI..." && redis-cli'
-alias re-flush='echo "⚠️  Flushing all Redis data..." && redis-cli FLUSHALL && echo "🔴 Redis cleared"'
-
-# Docker
-dk-start()  { echo "🐳 Starting Docker..."; _svc start  docker && echo "✅ Docker started"; }
-dk-stop()   { echo "🐳 Stopping Docker..."; _svc stop   docker && echo "✅ Docker stopped"; }
-dk-status() { echo "🐳 Docker status:";     _svc status docker; }
-
-# Combos
-alias dev-up='echo "▶ Starting dev stack..." && pg-start && dk-start && re-start && echo "✅ Dev stack started"'
-alias dev-down='echo "■ Stopping dev stack..." && pg-stop && mg-stop && dk-stop && re-stop && echo "🛑 Dev stack stopped"'
-dev-break() {
-  dev-down && clean-sys
-  if _os_is_mac; then sudo shutdown -h now; else sudo shutdown now; fi
 }
 
 # Ports (cross-platform: fuser on Linux, lsof on macOS, taskkill on WSL)
@@ -224,6 +179,7 @@ alias pwhy='pnpm why'                 # why is this package installed?
 # 4. AI & LLM 🤖
 # ══════════════════════════════════════════════════════════════════════════════
 alias gpt='codex --ask-for-approval never --sandbox danger-full-access'
+alias oc='opencode --auto'                             # opencode en mode yolo (auto-approve)
 # Locate migrate_skills.py — dynamic resolution, works on any OS/user.
 # Priority: 1) $THR_SKILL_SCRIPT env var  2) stable install locations  3) auto-discover
 _find_migrate_script() {

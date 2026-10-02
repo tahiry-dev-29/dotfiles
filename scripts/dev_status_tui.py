@@ -100,6 +100,25 @@ class DevStatusApp:
                 filtered.append((idx, item))
         return filtered
 
+    @staticmethod
+    def _fmt_res(item: Dict[str, Any]) -> str:
+        """Format CPU% and RSS into a compact string for inline display.
+        Examples: '1.2% 45M'  '0.0% 1.2G'  '--  --'
+        """
+        cpu = item.get("cpu")
+        rss_mb = item.get("rss_mb")
+
+        cpu_str = f"{cpu:.1f}%" if cpu is not None else "--"
+        if rss_mb is not None:
+            if rss_mb >= 1024:
+                rss_str = f"{rss_mb / 1024:.1f}G"
+            else:
+                rss_str = f"{rss_mb:.0f}M"
+        else:
+            rss_str = "--"
+
+        return f"{cpu_str} {rss_str}"
+
     def get_recent_logs(self, item: Dict[str, Any]) -> List[str]:
         """Fetch compact recent output/logs safely without blocking."""
         key = ""
@@ -287,11 +306,18 @@ class DevStatusApp:
                 p_fmt = f":{item['port']}".ljust(6)
                 row_str = f" {sel_sym} {st_icon} {proj_fmt} {fw_fmt} {p_fmt}"
 
-            # Truncate to box width
-            if len(row_str) > list_w - 2:
-                row_str = row_str[:list_w - 3] + "…"
-            else:
-                row_str = row_str.ljust(list_w)
+            # Resource badge: CPU% RSS  — rendered right-aligned within the box
+            res_badge = self._fmt_res(item)
+            res_w = len(res_badge) + 1  # right padding
+
+            # Truncate main text + pad, then overlay resource badge at right edge
+            max_main = list_w - res_w - 2
+            if len(row_str) > max_main:
+                row_str = row_str[:max_main - 1] + "…"
+            row_str = row_str.ljust(list_w)
+            # Embed resource badge at right end of the fixed-width string
+            badge_pos = list_w - res_w
+            row_str = row_str[:badge_pos] + res_badge + " "
 
             row_attr = curses.color_pair(5) if is_focused else curses.A_NORMAL
             if not is_focused and is_selected:
@@ -299,6 +325,10 @@ class DevStatusApp:
 
             try:
                 self.stdscr.addstr(row_y, 2, row_str, row_attr)
+                # Highlight resource badge in yellow when not focused/selected
+                if not is_focused and not is_selected:
+                    badge_x = 2 + badge_pos
+                    self.stdscr.addstr(row_y, badge_x, res_badge, curses.color_pair(4) | curses.A_DIM)
             except curses.error:
                 pass
 
@@ -321,6 +351,14 @@ class DevStatusApp:
                 lines_to_draw.append((f"Protocol    : {focused_item['protocol']}", curses.A_NORMAL))
                 lines_to_draw.append((f"State       : {focused_item['state']}", curses.color_pair(2) if focused_item['state'] == 'LISTEN' else curses.A_NORMAL))
                 lines_to_draw.append((f"Project     : {focused_item['project']}", curses.A_NORMAL))
+                lines_to_draw.append(("", curses.A_NORMAL))
+                lines_to_draw.append(("── Resources ──", curses.A_DIM | curses.color_pair(1)))
+                cpu_val = focused_item.get("cpu")
+                rss_val = focused_item.get("rss_mb")
+                cpu_disp = f"{cpu_val:.1f}%" if cpu_val is not None else "N/A"
+                rss_disp = (f"{rss_val / 1024:.2f} GB" if rss_val and rss_val >= 1024 else f"{rss_val:.1f} MB") if rss_val is not None else "N/A"
+                lines_to_draw.append((f"CPU         : {cpu_disp}", curses.color_pair(2) | curses.A_BOLD))
+                lines_to_draw.append((f"RSS Memory  : {rss_disp}", curses.color_pair(4) | curses.A_BOLD))
 
             elif self.current_tab == 1: # SERVICE DETAILS
                 lines_to_draw.append(("SERVICE DETAILS", curses.A_BOLD | curses.color_pair(1)))
@@ -332,6 +370,14 @@ class DevStatusApp:
                 lines_to_draw.append((f"Port        : {focused_item['port'] or 'None'}", curses.A_NORMAL))
                 lines_to_draw.append((f"PID         : {focused_item.get('pid') or 'N/A'}", curses.A_NORMAL))
                 lines_to_draw.append((f"Uptime      : {focused_item.get('uptime', 'N/A')}", curses.A_NORMAL))
+                lines_to_draw.append(("", curses.A_NORMAL))
+                lines_to_draw.append(("── Resources ──", curses.A_DIM | curses.color_pair(1)))
+                cpu_val = focused_item.get("cpu")
+                rss_val = focused_item.get("rss_mb")
+                cpu_disp = f"{cpu_val:.1f}%" if cpu_val is not None else "N/A"
+                rss_disp = (f"{rss_val / 1024:.2f} GB" if rss_val and rss_val >= 1024 else f"{rss_val:.1f} MB") if rss_val is not None else "N/A"
+                lines_to_draw.append((f"CPU         : {cpu_disp}", curses.color_pair(2) | curses.A_BOLD))
+                lines_to_draw.append((f"RSS Memory  : {rss_disp}", curses.color_pair(4) | curses.A_BOLD))
 
             else: # SERVE-DEV DETAILS
                 lines_to_draw.append(("DEVELOPMENT SERVER", curses.A_BOLD | curses.color_pair(1)))
@@ -344,6 +390,15 @@ class DevStatusApp:
                 lines_to_draw.append((f"PID         : {focused_item.get('pid') or 'N/A'}", curses.A_NORMAL))
                 lines_to_draw.append((f"Directory   : {focused_item.get('directory', 'N/A')}", curses.A_NORMAL))
                 lines_to_draw.append((f"Command     : {focused_item.get('command', 'N/A')}", curses.A_NORMAL))
+                lines_to_draw.append(("", curses.A_NORMAL))
+                lines_to_draw.append(("── Resources ──", curses.A_DIM | curses.color_pair(1)))
+                cpu_val = focused_item.get("cpu")
+                rss_val = focused_item.get("rss_mb")
+                cpu_disp = f"{cpu_val:.1f}%" if cpu_val is not None else "N/A"
+                rss_disp = (f"{rss_val / 1024:.2f} GB" if rss_val and rss_val >= 1024 else f"{rss_val:.1f} MB") if rss_val is not None else "N/A"
+                lines_to_draw.append((f"CPU         : {cpu_disp}", curses.color_pair(2) | curses.A_BOLD))
+                lines_to_draw.append((f"RSS Memory  : {rss_disp}", curses.color_pair(4) | curses.A_BOLD))
+
 
             # Add recent output / logs
             recent_logs = self.get_recent_logs(focused_item)
@@ -452,6 +507,12 @@ class DevStatusApp:
         title = f" {TABS[self.current_tab]} DETAILS "
         win.addstr(1, 2, title, curses.A_BOLD | curses.color_pair(1))
 
+        # Shared resource formatting
+        cpu_val = item.get("cpu")
+        rss_val = item.get("rss_mb")
+        cpu_disp = f"{cpu_val:.1f}%" if cpu_val is not None else "N/A"
+        rss_disp = (f"{rss_val / 1024:.2f} GB" if rss_val and rss_val >= 1024 else f"{rss_val:.1f} MB") if rss_val is not None else "N/A"
+
         lines = []
         if self.current_tab == 0:
             lines = [
@@ -463,6 +524,10 @@ class DevStatusApp:
                 f"Protocol    : {item['protocol']}",
                 f"State       : {item['state']}",
                 f"Project     : {item['project']}",
+                f"",
+                f"── Resources ──",
+                f"CPU         : {cpu_disp}",
+                f"RSS Memory  : {rss_disp}",
             ]
         elif self.current_tab == 1:
             lines = [
@@ -473,6 +538,10 @@ class DevStatusApp:
                 f"PID         : {item.get('pid') or 'N/A'}",
                 f"Uptime      : {item.get('uptime', 'N/A')}",
                 f"ID          : {item.get('id', 'N/A')}",
+                f"",
+                f"── Resources ──",
+                f"CPU         : {cpu_disp}",
+                f"RSS Memory  : {rss_disp}",
             ]
         else:
             lines = [
@@ -483,6 +552,10 @@ class DevStatusApp:
                 f"PID         : {item.get('pid') or 'N/A'}",
                 f"Directory   : {item.get('directory', 'N/A')}",
                 f"Command     : {item.get('command', 'N/A')}",
+                f"",
+                f"── Resources ──",
+                f"CPU         : {cpu_disp}",
+                f"RSS Memory  : {rss_disp}",
             ]
 
         for i, l in enumerate(lines):

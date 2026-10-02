@@ -52,61 +52,171 @@ sys-clean() {
 }
 
 
-unalias ports 2>/dev/null
-function ports() {
-  echo "📡 Open Ports:"
-  echo "╔══════╦═══════╦══════════════════════════╦═════════════════════╗"
-  printf "║ %-4s ║ %-5s ║ %-24s ║ %-19s ║\n" "Port" "Proto" "Program" "Local Address"
-  echo "╠══════╬═══════╬══════════════════════════╬═════════════════════╣"
-  local _p_port _p_prog
-  netstat -tulnp 2>/dev/null | awk 'NR>2 {print $1, $4, $7}' | while read -r proto addr prog_info; do
-    _p_port="${addr##*:}"
-    _p_prog="${prog_info#*/}"
-    if [[ "$_p_prog" == "-" || -z "$_p_prog" ]]; then _p_prog="N/A (needs sudo)"; fi
-    if [[ "$_p_port" != "" && "$_p_port" =~ ^[0-9]+$ ]]; then
-      printf "║ %-4s ║ %-5s ║ %-24s ║ %-19s ║\n" "$_p_port" "$proto" "${_p_prog:0:24}" "${addr:0:19}"
-    fi
-  done
-  echo "╚══════╩═══════╩══════════════════════════╩═════════════════════╝"
+# ==============================================================================
+# 🔌 PORTS & DEV-STATUS — Data layer + fzf TUI
+# ==============================================================================
+# Architecture:
+#   system discovery → parser/normalizer → structured model → fzf selector
+#
+# Public API:
+#   ports        – fuzzy multi-select over listening ports
+#   dev-status   – fuzzy multi-select over dev servers/services
+
+# ── Data layer ────────────────────────────────────────────────────────────────
+
+# discover_ports: emit one normalized line per listening TCP/UDP port.
+# Output columns (TAB-separated): port  proto  address  process
+# Never emits raw lsof/ss/netstat output; always structured.
+_discover_ports() {
+  # Try ss first (iproute2, most Linux), fall back to netstat (net-tools / macOS).
+  if command -v ss >/dev/null 2>&1; then
+    ss -tulnp 2>/dev/null \
+      | awk 'NR>1 {
+          proto=$1; addr=$5; proc=$7
+          port=addr; sub(/.*:/, "", port)
+          # ss process field: users:(("name",pid=N,fd=M)) — extract name via index
+          name="?"
+          if (index(proc, "((") > 0) {
+            s = substr(proc, index(proc, "((") + 3)
+            n = index(s, "\"")
+            if (n > 0) name = substr(s, 1, n - 1)
+          }
+          if (port ~ /^[0-9]+$/) printf "%s\t%s\t%s\t%s\n", port, proto, addr, name
+        }'
+  elif command -v netstat >/dev/null 2>&1; then
+    netstat -tulnp 2>/dev/null \
+      | awk 'NR>2 {
+          proto=$1; addr=$4; proc=$7
+          port=addr; sub(/.*:/, "", port)
+          name=proc; sub(/^[0-9]*\//, "", name)
+          if (name == "" || name == "-") name = "?"
+          if (port ~ /^[0-9]+$/) printf "%s\t%s\t%s\t%s\n", port, proto, addr, name
+        }'
+  else
+    return 1
+  fi
 }
+
+# normalize_port: map a raw process name to a friendly dev-service label when known.
+_normalize_port() {
+  local proc="$1"
+  case "${proc:l}" in           # :l = lowercase in zsh
+    node|bun)       echo "Node/Bun"    ;;
+    python*|uvicorn) echo "Python"     ;;
+    ruby|puma)      echo "Ruby"        ;;
+    postgres|postmaster) echo "PostgreSQL" ;;
+    mysqld)         echo "MySQL"       ;;
+    mongod)         echo "MongoDB"     ;;
+    redis-server)   echo "Redis"       ;;
+    nginx)          echo "Nginx"       ;;
+    apache2|httpd)  echo "Apache"      ;;
+    docker*)        echo "Docker"      ;;
+    java)           echo "Java"        ;;
+    *)              echo "$proc"       ;;
+  esac
+}
+
+# render_port_item: emit one display line for fzf from a structured port row.
+# Input: port  proto  address  process  (TAB-sep)
+# Output (TAB-sep): display-label  port  proto  process  address
+_render_port_item() {
+  local port="$1" proto="$2" addr="$3" proc="$4"
+  local label
+  label=$(_normalize_port "$proc")
+  # Display: port(5) service(16) proto(5) address(20)
+  printf "%-5s  %-16s  %-5s  %s\t%s\t%s\t%s\t%s\n" \
+    "$port" "$label" "$proto" "${addr:0:20}" \
+    "$port" "$proto" "$proc" "$addr"
+}
+
+# discover_dev_servers: emit one structured line per known dev service.
+# Output columns (TAB-sep): name  port  state
+_discover_dev_servers() {
+  local -a services=(
+    "PostgreSQL:postgresql:5432"
+    "MySQL:mysql:3306"
+    "MongoDB:mongod:27017"
+    "Redis:redis-server:6379"
+    "Docker:docker:0"
+  )
+  local entry name unit port state pid proc
+  for entry in "${services[@]}"; do
+    name="${entry%%:*}"; rest="${entry#*:}"; unit="${rest%%:*}"; port="${rest#*:}"
+    # Check service state via systemctl (Linux) or port occupancy (macOS/WSL).
+    if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet "$unit" 2>/dev/null; then
+      state="running"
+    elif [[ "$port" != "0" ]] && fuser "${port}/tcp" >/dev/null 2>&1; then
+      state="running"
+    else
+      state="stopped"
+    fi
+    printf "%s\t%s\t%s\n" "$name" "$port" "$state"
+  done
+
+  # Dev ports range — dynamic processes (NestJS, Angular, Vite, etc.)
+  local -a dev_ports=(3000 3001 4200 5173 8080 8000)
+  local -A seen_ports=()
+  for port in "${dev_ports[@]}"; do
+    pid=$(fuser "${port}/tcp" 2>/dev/null | awk '{print $1}')
+    [[ -z "$pid" ]] && continue
+    [[ -n "${seen_ports[$port]}" ]] && continue
+    seen_ports[$port]=1
+    proc=$(ps -p "$pid" -o comm= 2>/dev/null | head -1)
+    [[ -z "$proc" ]] && proc="?"
+    name=$(_normalize_port "$proc")
+    # Guess label from port
+    case "$port" in
+      3000) label="${name:-NestJS}" ;;
+      4200) label="${name:-Angular}" ;;
+      5173) label="${name:-Vite}" ;;
+      8080|8000) label="${name:-HTTP}" ;;
+      *) label="$name" ;;
+    esac
+    printf "%s\t%s\t%s\n" "$label" "$port" "running"
+  done
+}
+
+# normalize_server: map state string to a padded status badge.
+_normalize_server() {
+  case "$1" in
+    running) echo "● running" ;;
+    stopped) echo "○ stopped" ;;
+    *)       echo "? unknown"  ;;
+  esac
+}
+
+# render_server_item: emit one display line for fzf from a structured server row.
+# Input: name  port  state  (TAB-sep)
+# Output (TAB-sep): display-label  name  port  state
+_render_server_item() {
+  local name="$1" port="$2" state="$3"
+  local badge
+  badge=$(_normalize_server "$state")
+  # Display: name(14) port(6) badge(12)
+  printf "%-14s  %-6s  %s\t%s\t%s\t%s\n" \
+    "$name" "$port" "$badge" \
+    "$name" "$port" "$state"
+}
+
+# ── Public commands ───────────────────────────────────────────────────────────
 
 unalias dev-status 2>/dev/null
 function dev-status() {
-  echo ""
-  echo "╔════════════════════════════════════════╗"
-  echo "║         Dev Stack Status               ║"
-  echo "╠═════════════╦══════════╦══════════════╣"
-  printf "║ %-11s ║ %-8s ║ %-12s ║\n" "Service" "Status" "Port"
-  echo "╠═════════════╬══════════╬══════════════╣"
-  _svc_row() {
-    local name="$1" unit="$2" port="$3"
-    local svc_status
-    if systemctl is-active --quiet "$unit" 2>/dev/null; then
-      svc_status="✅ active"
-    else
-      svc_status="❌ stopped"
-    fi
-    printf "║ %-11s ║ %-8s ║ %-12s ║\n" "$name" "$svc_status" "$port"
-  }
-  _svc_row "PostgreSQL" "postgresql" "5432"
-  _svc_row "MySQL" "mysql" "3306"
-  _svc_row "MongoDB" "mongod" "27017"
-  _svc_row "Docker" "docker" "daemon"
-  _svc_row "Redis" "redis-server" "6379"
-  echo "╠═════════════╩══════════╩══════════════╣"
-  echo "║    Active Ports (dev range)           ║"
-  echo "╠═══════════════════════════════════════╣"
-  local _ds_pid _ds_prog
-  for port in 3000 4200 8080 5173 3001; do
-    _ds_pid=$(fuser "$port/tcp" 2>/dev/null | awk '{print $1}')
-    if [[ -n "$_ds_pid" ]]; then
-      _ds_prog=$(ps -p "$_ds_pid" -o comm= 2>/dev/null | head -n 1)
-      if [[ -z "$_ds_prog" ]]; then _ds_prog="?"; fi
-      printf "║  ✅ %-5s → PID %-6s %-15s ║\n" ":$port" "$_ds_pid" "($_ds_prog)"
-    fi
-  done
-  echo "╚═══════════════════════════════════════╝"
-  echo ""
+  emulate -L zsh
+  local py_script="$HOME/dotfiles/scripts/dev_status.py"
+  if [[ -f "$py_script" ]] && command -v python3 >/dev/null 2>&1; then
+    python3 "$py_script" "$@"
+    return $?
+  fi
+  echo "❌ Python 3 or $py_script not found."
+  return 1
+}
+
+unalias ports 2>/dev/null
+function ports() {
+  emulate -L zsh
+  # Section 18: thin shortcut to the Ports tab of dev-status
+  dev-status --tab ports "$@"
 }
 
 # 📋 CLIPBOARD HISTORY (Wayland — wl-clipboard)
